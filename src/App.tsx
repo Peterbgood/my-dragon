@@ -13,15 +13,21 @@ import { db } from "./firebase";
 interface BudgetItem {
   id: string;
   label: string;
-  estimate: number;
   actual: number;
   order?: number;
+  pinned?: boolean;
 }
 
 export default function App() {
   const [items, setItems] = useState<BudgetItem[]>([]);
   const [newItemLabel, setNewItemLabel] = useState("");
+  const [newItemAmount, setNewItemAmount] = useState<number | "">("");
   const [totalIncome, setTotalIncome] = useState(6000); // Default to 6000, can be edited
+  
+  // App Lock State
+  const [isUnlocked, setIsUnlocked] = useState(false);
+  const [pinInput, setPinInput] = useState("");
+  const [pinError, setPinError] = useState("");
 
   // Edit states
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -35,34 +41,54 @@ export default function App() {
         ...doc.data(),
       })) as BudgetItem[];
       
-      // Sort items by their order property
-      data.sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+      // Sort items: Pinned items first, then by their order property
+      data.sort((a, b) => {
+        if (a.pinned && !b.pinned) return -1;
+        if (!a.pinned && b.pinned) return 1;
+        return (a.order ?? 0) - (b.order ?? 0);
+      });
       
       setItems(data);
     });
     return () => unsubscribe();
   }, []);
 
-  // 2. Create: Add a new custom field
+  // 2. Auto Unlock Mechanism: Check PIN as soon as 4 digits are entered
+  useEffect(() => {
+    if (pinInput.length === 4) {
+      if (pinInput === "3270") {
+        setIsUnlocked(true);
+        setPinError("");
+        setPinInput("");
+      } else {
+        setPinError("Incorrect PIN. Please try again.");
+        setPinInput("");
+      }
+    }
+  }, [pinInput]);
+
+  // 3. Create: Add a new custom field with label and amount
   const addItem = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newItemLabel.trim()) return;
+    
     await addDoc(collection(db, "budget"), {
       label: newItemLabel,
-      estimate: 0,
-      actual: 0,
-      order: items.length
+      actual: Number(newItemAmount) || 0,
+      order: items.length,
+      pinned: false
     });
     setNewItemLabel("");
+    setNewItemAmount("");
   };
 
-  // 3. Update: Save changes to estimate or actual values
-  const updateValue = async (id: string, field: "estimate" | "actual", value: string) => {
+  // 4. Update: Save changes to actual values
+  const updateValue = async (id: string, value: string) => {
     const itemDoc = doc(db, "budget", id);
-    await updateDoc(itemDoc, { [field]: Number(value) });
+    await updateDoc(itemDoc, { actual: Number(value) });
   };
 
-  // 3. Update (Alternative): Edit label/category name
+  // 5. Update: Edit label/category name
   const saveLabel = async (id: string) => {
     if (!editingLabel.trim()) return;
     const itemDoc = doc(db, "budget", id);
@@ -70,12 +96,12 @@ export default function App() {
     setEditingId(null);
   };
 
-  // 4. Delete: Remove a field
+  // 6. Delete: Remove a field
   const deleteItem = async (id: string) => {
     await deleteDoc(doc(db, "budget", id));
   };
 
-  // 5. Reorder: Move Items Up and Down
+  // 7. Reorder: Move Items Up and Down
   const moveUp = async (index: number) => {
     if (index === 0) return;
     const currentItem = items[index];
@@ -100,37 +126,83 @@ export default function App() {
     await updateDoc(doc(db, "budget", nextItem.id), { order: currentOrder });
   };
 
-  const totalEstimate = items.reduce((sum, item) => sum + item.estimate, 0);
+  // 8. Pin/Unpin Item
+  const togglePin = async (id: string, currentPinned: boolean) => {
+    const itemDoc = doc(db, "budget", id);
+    await updateDoc(itemDoc, { pinned: !currentPinned });
+  };
+
   const totalActual = items.reduce((sum, item) => sum + item.actual, 0);
 
-  return (
-    <div className="max-w-2xl mx-auto p-4 md:p-8 font-sans">
-      <header className="mb-8 border-b pb-6">
-        <h1 className="text-4xl font-black text-indigo-600 italic tracking-wider">MY DRAGON</h1>
-        <p className="text-gray-500 text-sm mt-1">Monthly Budget Strategy</p>
-        
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6">
-          <div className="p-4 bg-indigo-50 rounded-lg border border-indigo-100">
-            <label className="block text-xs uppercase font-bold text-indigo-600 mb-1">Total Income</label>
-            <div className="flex items-center text-2xl font-extrabold text-gray-800">
-              <span className="mr-1">$</span>
+  // Render Lock Screen if not unlocked
+  if (!isUnlocked) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+        <div className="bg-white p-8 rounded-2xl shadow-md border border-gray-100 max-w-sm w-full text-center">
+          <h1 className="text-3xl font-black text-indigo-600 italic tracking-wider mb-2">MY DRAGON</h1>
+          <p className="text-gray-500 text-sm mb-6">Enter your 4-digit PIN to access budget</p>
+          
+          <div className="space-y-4">
+            <div>
               <input 
-                type="number" 
-                value={totalIncome}
-                onChange={(e) => setTotalIncome(Number(e.target.value))}
-                className="w-36 bg-transparent border-b-2 border-transparent focus:border-indigo-500 focus:outline-none"
+                type="password"
+                inputMode="numeric"
+                pattern="[0-9]*"
+                maxLength={4}
+                value={pinInput}
+                onChange={(e) => setPinInput(e.target.value)}
+                placeholder="••••"
+                autoFocus
+                className="w-full p-4 text-center text-2xl tracking-widest border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-gray-50"
               />
             </div>
-          </div>
-          
-          <div className="p-4 bg-gray-50 rounded-lg border border-gray-200">
-            <span className="block text-xs uppercase font-bold text-gray-500 mb-1">Remaining Budget</span>
-            <span className={`text-2xl font-extrabold ${totalIncome - totalEstimate >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-              ${totalIncome - totalEstimate}
-            </span>
+            
+            {pinError && (
+              <p className="text-red-500 text-sm font-medium animate-pulse">{pinError}</p>
+            )}
           </div>
         </div>
+      </div>
+    );
+  }
+
+  // Render Main Application
+  return (
+    <div className="max-w-2xl mx-auto p-4 md:p-8 font-sans">
+      <header className="mb-8 border-b pb-6 flex justify-between items-start">
+        <div>
+          <h1 className="text-4xl font-black text-indigo-600 italic tracking-wider">MY DRAGON</h1>
+          <p className="text-gray-500 text-sm mt-1">Monthly Budget Strategy</p>
+        </div>
+        <button 
+          onClick={() => setIsUnlocked(false)}
+          className="text-xs bg-gray-100 text-gray-600 px-3 py-1.5 rounded-lg border border-gray-300 hover:bg-gray-200 font-semibold transition"
+        >
+          Lock App
+        </button>
       </header>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6 mb-8">
+        <div className="p-4 bg-indigo-50 rounded-lg border border-indigo-100">
+          <label className="block text-xs uppercase font-bold text-indigo-600 mb-1">Total Income</label>
+          <div className="flex items-center text-2xl font-extrabold text-gray-800">
+            <span className="mr-1">$</span>
+            <input 
+              type="number" 
+              value={totalIncome}
+              onChange={(e) => setTotalIncome(Number(e.target.value))}
+              className="w-36 bg-transparent border-b-2 border-transparent focus:border-indigo-500 focus:outline-none"
+            />
+          </div>
+        </div>
+        
+        <div className="p-4 bg-gray-50 rounded-lg border border-gray-200">
+          <span className="block text-xs uppercase font-bold text-gray-500 mb-1">Remaining Budget</span>
+          <span className={`text-2xl font-extrabold ${totalIncome - totalActual >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+            ${totalIncome - totalActual}
+          </span>
+        </div>
+      </div>
 
       {/* Add New Field Form */}
       <form onSubmit={addItem} className="mb-8 flex gap-3 flex-col sm:flex-row">
@@ -140,6 +212,13 @@ export default function App() {
           className="flex-1 p-3 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
           value={newItemLabel}
           onChange={(e) => setNewItemLabel(e.target.value)}
+        />
+        <input 
+          type="number" 
+          placeholder="Amount ($)"
+          className="p-3 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 w-full sm:w-40"
+          value={newItemAmount}
+          onChange={(e) => setNewItemAmount(Number(e.target.value))}
         />
         <button className="bg-indigo-600 text-white px-5 py-3 rounded-lg font-bold hover:bg-indigo-700 transition shadow-sm w-full sm:w-auto">
           + ADD FIELD
@@ -160,28 +239,46 @@ export default function App() {
           items.map((item, index) => (
             <div 
               key={item.id} 
-              className="flex flex-col md:flex-row md:items-center justify-between p-4 bg-white border border-gray-200 rounded-lg shadow-sm gap-4"
+              className={`flex flex-col md:flex-row md:items-center justify-between p-4 border rounded-lg shadow-sm gap-4 transition-colors ${
+                item.pinned 
+                  ? 'bg-amber-50 border-amber-200' 
+                  : 'bg-white border-gray-200'
+              }`}
             >
-              {/* Category Name & Move Controls */}
+              {/* Category Name & Move/Pin Controls */}
               <div className="flex items-center justify-between md:justify-start gap-3 w-full md:w-auto">
                 <div className="flex items-center gap-3">
-                  {/* Up/Down controls for mobile & desktop */}
-                  <div className="flex flex-col gap-1 select-none">
+                  {/* Up/Down controls + Pin Button */}
+                  <div className="flex items-center gap-2 select-none">
+                    <div className="flex flex-col gap-1">
+                      <button 
+                        onClick={() => moveUp(index)} 
+                        disabled={index === 0}
+                        className="text-gray-400 hover:text-indigo-600 p-0.5 disabled:opacity-30 disabled:cursor-not-allowed"
+                        title="Move Up"
+                      >
+                        ▲
+                      </button>
+                      <button 
+                        onClick={() => moveDown(index)} 
+                        disabled={index === items.length - 1}
+                        className="text-gray-400 hover:text-indigo-600 p-0.5 disabled:opacity-30 disabled:cursor-not-allowed"
+                        title="Move Down"
+                      >
+                        ▼
+                      </button>
+                    </div>
+
                     <button 
-                      onClick={() => moveUp(index)} 
-                      disabled={index === 0}
-                      className="text-gray-400 hover:text-indigo-600 p-0.5 disabled:opacity-30 disabled:cursor-not-allowed"
-                      title="Move Up"
+                      onClick={() => togglePin(item.id, !!item.pinned)}
+                      className={`p-1.5 rounded transition ${
+                        item.pinned 
+                          ? 'text-amber-500 bg-amber-100' 
+                          : 'text-gray-300 hover:text-amber-500 hover:bg-gray-100'
+                      }`}
+                      title={item.pinned ? "Unpin item" : "Pin item to top"}
                     >
-                      ▲
-                    </button>
-                    <button 
-                      onClick={() => moveDown(index)} 
-                      disabled={index === items.length - 1}
-                      className="text-gray-400 hover:text-indigo-600 p-0.5 disabled:opacity-30 disabled:cursor-not-allowed"
-                      title="Move Down"
-                    >
-                      ▼
+                      📌
                     </button>
                   </div>
 
@@ -220,32 +317,18 @@ export default function App() {
                 </div>
               </div>
 
-              {/* Estimates and Actual fields with responsive spacing */}
+              {/* Amount field with responsive spacing */}
               <div className="flex items-center justify-between md:justify-end gap-4 w-full md:w-auto border-t md:border-t-0 pt-4 md:pt-0 border-gray-100">
                 <div className="flex items-center gap-2 flex-1 sm:flex-none justify-between sm:justify-start">
-                  <label className="text-xs font-bold text-gray-400 uppercase mr-1 sm:mr-0">Est</label>
-                  <div className="flex items-center border border-gray-300 rounded-md p-1.5 bg-white w-28">
-                    <span className="text-gray-400 mr-1">$</span>
-                    <input 
-                      type="number" 
-                      className="w-full focus:outline-none font-medium text-sm"
-                      value={item.estimate || ""}
-                      placeholder="0"
-                      onChange={(e) => updateValue(item.id, "estimate", e.target.value)}
-                    />
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-2 flex-1 sm:flex-none justify-between sm:justify-start">
-                  <label className="text-xs font-bold text-gray-400 uppercase mr-1 sm:mr-0">Act</label>
-                  <div className="flex items-center border border-gray-300 rounded-md p-1.5 bg-yellow-50/30 w-28">
+                  <label className="text-xs font-bold text-gray-400 uppercase mr-1 sm:mr-0">Amount</label>
+                  <div className="flex items-center border border-gray-300 rounded-md p-1.5 bg-yellow-50/30 w-32">
                     <span className="text-gray-400 mr-1">$</span>
                     <input 
                       type="number" 
                       className="w-full focus:outline-none font-medium text-sm bg-transparent"
                       value={item.actual || ""}
                       placeholder="0"
-                      onChange={(e) => updateValue(item.id, "actual", e.target.value)}
+                      onChange={(e) => updateValue(item.id, e.target.value)}
                     />
                   </div>
                 </div>
@@ -266,15 +349,9 @@ export default function App() {
       </div>
 
       {/* Summary totals section */}
-      <div className="mt-8 grid grid-cols-1 sm:grid-cols-2 gap-4 bg-gray-50 p-5 rounded-lg border border-gray-200">
+      <div className="mt-8 bg-gray-50 p-5 rounded-lg border border-gray-200">
         <div>
-          <p className="text-sm text-gray-500 font-medium">Total Estimated Expenses</p>
-          <p className="text-3xl font-black text-gray-800 mt-1">
-            ${totalEstimate}
-          </p>
-        </div>
-        <div className="sm:text-right">
-          <p className="text-sm text-gray-500 font-medium">Total Actual Expenses</p>
+          <p className="text-sm text-gray-500 font-medium">Total Expenses</p>
           <p className="text-3xl font-black text-indigo-600 mt-1">
             ${totalActual}
           </p>
