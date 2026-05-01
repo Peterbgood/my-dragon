@@ -182,17 +182,17 @@ export default function App() {
           </button>
         </header>
 
-        {/* Centered Income Component */}
+        {/* Centered Income Component - Solid Orange */}
         <div className="flex justify-center mt-6 mb-8">
-          <div className="p-4 bg-white/15 backdrop-blur-sm rounded-lg border border-pink-400 text-center w-full max-w-sm shadow-md">
-            <label className="block text-xs uppercase font-bold text-pink-200 mb-1">Total Income</label>
+          <div className="p-4 bg-orange-500 rounded-lg border border-orange-400 text-center w-full max-w-sm shadow-md">
+            <label className="block text-xs uppercase font-bold text-orange-200 mb-1">Total Income</label>
             <div className="flex items-center justify-center text-3xl font-extrabold text-white">
-              <span className="mr-1 text-pink-300">$</span>
+              <span className="mr-1 text-orange-300">$</span>
               <input 
                 type="number" 
                 value={totalIncome}
                 onChange={(e) => setTotalIncome(Number(e.target.value))}
-                className="w-36 bg-transparent border-b-2 border-transparent focus:border-pink-300 focus:outline-none text-center font-extrabold text-white"
+                className="w-36 bg-transparent border-b-2 border-transparent focus:border-orange-300 focus:outline-none text-center font-extrabold text-white"
               />
             </div>
           </div>
@@ -219,7 +219,7 @@ export default function App() {
           </button>
         </form>
 
-        {/* List of Fields */}
+        {/* List of Fields - Solid Orange when unpaid, Green when paid */}
         <div className="space-y-3">
           {items.length === 0 ? (
             <div className="p-12 text-center text-white bg-white/10 rounded-lg border border-pink-400">
@@ -236,7 +236,7 @@ export default function App() {
                 className={`flex flex-col md:flex-row md:items-center justify-between p-4 border rounded-lg shadow-sm gap-4 transition-colors ${
                   item.paid 
                     ? 'bg-green-300 border-green-500' 
-                    : 'bg-white border-pink-400'
+                    : 'bg-orange-500 border-orange-400'
                 }`}
               >
                 {/* Category Name & Controls */}
@@ -257,7 +257,7 @@ export default function App() {
                         <button 
                           onClick={() => moveUp(index)} 
                           disabled={index === 0}
-                          className="text-gray-400 hover:text-pink-600 p-0.5 disabled:opacity-30 disabled:cursor-not-allowed"
+                          className="text-gray-300 hover:text-pink-600 p-0.5 disabled:opacity-30 disabled:cursor-not-allowed"
                           title="Move Up"
                         >
                           ▲
@@ -265,7 +265,7 @@ export default function App() {
                         <button 
                           onClick={() => moveDown(index)} 
                           disabled={index === items.length - 1}
-                          className="text-gray-400 hover:text-pink-600 p-0.5 disabled:opacity-30 disabled:cursor-not-allowed"
+                          className="text-gray-300 hover:text-pink-600 p-0.5 disabled:opacity-30 disabled:cursor-not-allowed"
                           title="Move Down"
                         >
                           ▼
@@ -283,7 +283,7 @@ export default function App() {
                           className="border border-gray-300 rounded p-1.5 font-semibold text-gray-800 w-32 md:w-44 focus:outline-none focus:ring-2 focus:ring-pink-500 bg-white" 
                         />
                       ) : (
-                        <span className={`font-semibold block ${item.paid ? 'text-green-900' : 'text-gray-800'}`}>
+                        <span className={`font-semibold block ${item.paid ? 'text-green-900' : 'text-white'}`}>
                           {item.label}
                         </span>
                       )}
@@ -311,7 +311,7 @@ export default function App() {
                 </div>
 
                 {/* Amount field with responsive spacing */}
-                <div className="flex items-center justify-between md:justify-end gap-4 w-full md:w-auto border-t md:border-t-0 pt-4 md:pt-0 border-pink-400/30">
+                <div className="flex items-center justify-between md:justify-end gap-4 w-full md:w-auto border-t md:border-t-0 pt-4 md:pt-0 border-orange-400/30">
                   <div className="flex items-center gap-2 flex-1 sm:flex-none justify-between sm:justify-start">
                     <label className="text-xs font-bold text-gray-700 uppercase mr-1 sm:mr-0">Amount</label>
                     <div className="flex items-center border border-gray-400 rounded-md p-1.5 bg-white/70 w-32">
@@ -341,16 +341,16 @@ export default function App() {
           )}
         </div>
 
-        {/* Summary totals section */}
-        <div className="mt-8 grid grid-cols-1 sm:grid-cols-2 gap-4 bg-white/15 backdrop-blur-sm p-5 rounded-lg border border-pink-400">
+        {/* Summary totals section - Solid Orange */}
+        <div className="mt-8 grid grid-cols-1 sm:grid-cols-2 gap-4 bg-orange-500 p-5 rounded-lg border border-orange-400">
           <div>
-            <p className="text-xs font-bold text-pink-200 uppercase">Total Expenses</p>
+            <p className="text-xs font-bold text-orange-200 uppercase">Total Expenses</p>
             <p className="text-3xl font-black text-white mt-1">
               ${totalActual}
             </p>
           </div>
           <div>
-            <p className="text-xs font-bold text-pink-200 uppercase">Remaining</p>
+            <p className="text-xs font-bold text-orange-200 uppercase">Remaining</p>
             <p className={`text-3xl font-black mt-1 ${totalIncome - totalActual >= 0 ? 'text-green-300' : 'text-orange-400'}`}>
               ${totalIncome - totalActual}
             </p>
