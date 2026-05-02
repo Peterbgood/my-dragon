@@ -237,22 +237,7 @@ export default function TransactionsTab({ items, totalIncome }: { items: BudgetI
       </div>
 
       {/* Summary totals section on the BOTTOM */}
-      <div className="mt-8 space-y-4">
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 bg-orange-500 p-5 rounded-lg border border-orange-400">
-          <div>
-            <p className="text-xs font-bold text-orange-200 uppercase">Total of bills</p>
-            <p className="text-3xl font-black text-white mt-1">
-              ${totalActual}
-            </p>
-          </div>
-          <div>
-            <p className="text-xs font-bold text-orange-200 uppercase">Remainder</p>
-            <p className={`text-3xl font-black mt-1 ${finalRemaining >= 0 ? 'text-green-300' : 'text-orange-400'}`}>
-              ${finalRemaining}
-            </p>
-          </div>
-        </div>
-      </div>
+     
     </div>
   );
 }
