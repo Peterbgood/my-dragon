@@ -79,7 +79,6 @@ export default function TransactionsTab({ items, totalIncome }: { items: BudgetI
 
   const scrollToForm = () => {
     const el = document.getElementById("transaction-form");
-    if (el) el.scrollIntoViewOnTop; // Kept as original
     if (el) el.scrollIntoView({ behavior: "smooth" });
   };
 
@@ -92,9 +91,9 @@ export default function TransactionsTab({ items, totalIncome }: { items: BudgetI
     const timeA = new Date(a.date).getTime();
     const timeB = new Date(b.date).getTime();
     if (!isNaN(timeA) && !isNaN(timeB) && timeA !== timeB) {
-      return timeB - timeA; // newest date first
+      return timeB - timeA;
     }
-    return b.id.localeCompare(a.id); // newest ID first
+    return b.id.localeCompare(a.id);
   });
 
   return (
@@ -167,6 +166,7 @@ export default function TransactionsTab({ items, totalIncome }: { items: BudgetI
                 setEditingTransactionId(null);
                 setNewLabel("");
                 setNewAmount("");
+                setNewDate("");
               }}
               className="flex-1 bg-gray-500 text-white p-4 rounded-xl font-black text-xl hover:bg-gray-600 transition shadow-md"
             >
