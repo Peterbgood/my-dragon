@@ -5,7 +5,9 @@ import {
   onSnapshot, 
   updateDoc, 
   deleteDoc, 
-  doc 
+  doc,
+  getDoc,
+  setDoc
 } from "firebase/firestore";
 import { db } from "./firebase";
 import TransactionsTab from "./TransactionsTab";
@@ -36,16 +38,15 @@ export default function App() {
   // Budget states
   const [newItemLabel, setNewItemLabel] = useState("");
   const [newItemAmount, setNewItemAmount] = useState<number | "">("");
+  const [editingBudgetId, setEditingBudgetId] = useState<string | null>(null);
+
   const [totalIncome, setTotalIncome] = useState(6000); // Default to 6000
+  const [tempIncome, setTempIncome] = useState<number | "">(6000);
   
   // App Lock State
   const [isUnlocked, setIsUnlocked] = useState(false);
   const [pinInput, setPinInput] = useState("");
   const [pinError, setPinError] = useState("");
-
-  // Edit states
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [editingLabel, setEditingLabel] = useState("");
 
   // 1. Read: Listen for real-time updates from Budget Firestore
   useEffect(() => {
@@ -74,7 +75,25 @@ export default function App() {
     return () => unsubscribe();
   }, []);
 
-  // 2. Auto Unlock Mechanism: Check PIN as soon as 4 digits are entered
+  // Read Income
+  useEffect(() => {
+    const fetchIncome = async () => {
+      try {
+        const docRef = doc(db, "settings", "monthlyIncome");
+        const docSnap = await getDoc(docRef);
+        if (docSnap.exists()) {
+          const data = docSnap.data();
+          setTotalIncome(data.amount);
+          setTempIncome(data.amount);
+        }
+      } catch (e) {
+        console.error("Error reading income: ", e);
+      }
+    };
+    fetchIncome();
+  }, []);
+
+  // 2. Auto Unlock Mechanism
   useEffect(() => {
     if (pinInput.length === 4) {
       if (pinInput === "3270") {
@@ -88,41 +107,49 @@ export default function App() {
     }
   }, [pinInput]);
 
-  // 3. Create: Add a new custom field with label, amount, and paid status
+  const saveIncome = async () => {
+    try {
+      if (tempIncome !== "") {
+        await setDoc(doc(db, "settings", "monthlyIncome"), { amount: Number(tempIncome) });
+        setTotalIncome(Number(tempIncome));
+      }
+    } catch (e) {
+      console.error("Error updating income: ", e);
+    }
+  };
+
+  // 3. Create or Update Item
   const addItem = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newItemLabel.trim()) return;
     
-    await addDoc(collection(db, "budget"), {
-      label: newItemLabel,
-      actual: Number(newItemAmount) || 0,
-      order: items.length,
-      paid: false
-    });
+    if (editingBudgetId) {
+      // Save changes to original field
+      await updateDoc(doc(db, "budget", editingBudgetId), { 
+        label: newItemLabel,
+        actual: Number(newItemAmount) || 0,
+      });
+      setEditingBudgetId(null);
+    } else {
+      // Add new field
+      await addDoc(collection(db, "budget"), {
+        label: newItemLabel,
+        actual: Number(newItemAmount) || 0,
+        order: items.length,
+        paid: false
+      });
+    }
+
     setNewItemLabel("");
     setNewItemAmount("");
   };
 
-  // 4. Update: Save changes to actual values
-  const updateValue = async (id: string, value: string) => {
-    const itemDoc = doc(db, "budget", id);
-    await updateDoc(itemDoc, { actual: Number(value) });
-  };
-
-  // 5. Update: Edit label/category name
-  const saveLabel = async (id: string) => {
-    if (!editingLabel.trim()) return;
-    const itemDoc = doc(db, "budget", id);
-    await updateDoc(itemDoc, { label: editingLabel });
-    setEditingId(null);
-  };
-
-  // 6. Delete: Remove a field
+  // 5. Delete: Remove a field
   const deleteItem = async (id: string) => {
     await deleteDoc(doc(db, "budget", id));
   };
 
-  // 7. Reorder: Move Items Up and Down
+  // 6. Reorder: Move Items Up and Down
   const moveUp = async (index: number) => {
     if (index === 0) return;
     const currentItem = items[index];
@@ -147,15 +174,21 @@ export default function App() {
     await updateDoc(doc(db, "budget", nextItem.id), { order: currentOrder });
   };
 
-  // 8. Paid Checkbox Handler
+  // 7. Paid Checkbox Handler
   const togglePaid = async (id: string, currentPaid: boolean) => {
-    const itemDoc = doc(db, "budget", id);
-    await updateDoc(itemDoc, { paid: !currentPaid });
+    await updateDoc(doc(db, "budget", id), { paid: !currentPaid });
   };
 
   const totalActual = items.reduce((sum, item) => sum + item.actual, 0);
   const totalTransactions = transactions.reduce((sum, t) => sum + t.amount, 0);
   const remainingBudget = totalIncome - totalActual - totalTransactions;
+
+  const scrollToForm = () => {
+    const el = document.getElementById("budget-form");
+    if (el) {
+      el.scrollIntoView({ behavior: "smooth" });
+    }
+  };
 
   // Render Lock Screen if not unlocked
   if (!isUnlocked) {
@@ -243,21 +276,35 @@ export default function App() {
               {activeTab === "budget" ? (
                 <input 
                   type="number" 
-                  value={totalIncome}
-                  onChange={(e) => setTotalIncome(Number(e.target.value))}
+                  value={tempIncome}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    setTempIncome(val === "" ? "" : Number(val));
+                  }}
                   className="w-36 bg-transparent border-b-2 border-transparent focus:border-orange-300 focus:outline-none text-center font-extrabold text-white"
                 />
               ) : (
                 <span>{totalIncome - totalActual}</span>
               )}
             </div>
+            
+            {activeTab === "budget" && tempIncome !== totalIncome && (
+              <div className="mt-2 flex justify-center">
+                <button
+                  onClick={saveIncome}
+                  className="text-xs bg-green-600 text-white px-3 py-1 rounded font-semibold hover:bg-green-700 transition shadow-sm"
+                >
+                  Save Income
+                </button>
+              </div>
+            )}
           </div>
         </div>
 
         {activeTab === "budget" && (
           <>
-            {/* Add New Field Form with Amount input */}
-            <form onSubmit={addItem} className="mb-8 flex gap-3 flex-col sm:flex-row">
+            {/* Add/Edit Form */}
+            <form id="budget-form" onSubmit={addItem} className="mb-8 flex gap-3 flex-col sm:flex-row">
               <input 
                 type="text" 
                 placeholder="e.g., Mortgage, Gas, Groceries"
@@ -273,19 +320,27 @@ export default function App() {
                 onChange={(e) => setNewItemAmount(Number(e.target.value))}
               />
               <button className="bg-orange-500 text-white px-5 py-3 rounded-lg font-bold hover:bg-orange-600 transition shadow-sm w-full sm:w-auto">
-                + ADD FIELD
+                {editingBudgetId ? "SAVE" : "+ ADD FIELD"}
               </button>
+              {editingBudgetId && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setEditingBudgetId(null);
+                    setNewItemLabel("");
+                    setNewItemAmount("");
+                  }}
+                  className="bg-gray-500 text-white px-5 py-3 rounded-lg font-bold hover:bg-gray-600 transition shadow-sm w-full sm:w-auto"
+                >
+                  Cancel
+                </button>
+              )}
             </form>
 
-            {/* List of Fields - Solid Orange when unpaid, Green when paid */}
             <div className="space-y-3">
               {items.length === 0 ? (
                 <div className="p-12 text-center text-white bg-white/10 rounded-lg border border-pink-400">
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12 mx-auto mb-4 text-pink-200" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3m0 0v3m0-3h3m-3 0H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
                   <p className="font-medium text-white mb-1">No budget fields yet</p>
-                  <span className="text-sm text-pink-200">Type a name above to create your first field.</span>
                 </div>
               ) : (
                 items.map((item, index) => (
@@ -297,7 +352,6 @@ export default function App() {
                         : 'bg-orange-500 border-orange-400'
                     }`}
                   >
-                    {/* Category Name & Controls */}
                     <div className="flex items-center justify-between md:justify-start gap-3 w-full md:w-auto">
                       <div className="flex items-center gap-3">
                         {/* Paid Checkbox */}
@@ -331,68 +385,45 @@ export default function App() {
                           </div>
                         </div>
 
-                        {/* Label / Input area */}
                         <div>
-                          {editingId === item.id ? (
-                            <input 
-                              type="text"
-                              value={editingLabel}
-                              onChange={(e) => setEditingLabel(e.target.value)}
-                              className="border border-gray-300 rounded p-1.5 font-semibold text-gray-800 w-32 md:w-44 focus:outline-none focus:ring-2 focus:ring-pink-500 bg-white" 
-                            />
-                          ) : (
-                            <span className={`font-semibold block ${item.paid ? 'text-green-900' : 'text-white'}`}>
-                              {item.label}
-                            </span>
-                          )}
+                          <span className={`font-semibold block ${item.paid ? 'text-green-900' : 'text-white'}`}>
+                            {item.label}
+                          </span>
                         </div>
                       </div>
 
-                      {/* Edit Controls */}
                       <div className="flex items-center gap-1 md:ml-4">
-                        {editingId === item.id ? (
-                          <button 
-                            onClick={() => saveLabel(item.id)}
-                            className="text-xs bg-green-600 text-white px-2 py-1 rounded font-semibold hover:bg-green-700 transition shadow-sm"
-                          >
-                            Save
-                          </button>
-                        ) : (
-                          <button 
-                            onClick={() => { setEditingId(item.id); setEditingLabel(item.label); }}
-                            className="text-xs bg-gray-200 text-gray-700 px-2 py-1 rounded border border-gray-400 font-medium hover:bg-gray-300 transition"
-                          >
-                            Edit
-                          </button>
-                        )}
+                        <button 
+                          onClick={() => { 
+                            setEditingBudgetId(item.id); 
+                            setNewItemLabel(item.label); 
+                            setNewItemAmount(item.actual);
+                            scrollToForm();
+                          }}
+                          className="text-xs bg-gray-200 text-gray-700 px-2 py-1 rounded border border-gray-400 font-medium hover:bg-gray-300 transition"
+                        >
+                          Edit
+                        </button>
+                        <button 
+                          onClick={() => deleteItem(item.id)}
+                          className="text-white/80 hover:text-orange-600 transition p-2 rounded-full hover:bg-white/30"
+                          title="Remove Category"
+                        >
+                          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                          </svg>
+                        </button>
                       </div>
                     </div>
 
-                    {/* Amount field with responsive spacing */}
                     <div className="flex items-center justify-between md:justify-end gap-4 w-full md:w-auto border-t md:border-t-0 pt-4 md:pt-0 border-orange-400/30">
                       <div className="flex items-center gap-2 flex-1 sm:flex-none justify-between sm:justify-start">
                         <label className="text-xs font-bold text-gray-700 uppercase mr-1 sm:mr-0">Amount</label>
                         <div className="flex items-center border border-gray-400 rounded-md p-1.5 bg-white/70 w-32">
                           <span className="text-gray-500 mr-1">$</span>
-                          <input 
-                            type="number" 
-                            className="w-full focus:outline-none font-medium text-sm bg-transparent text-gray-900 placeholder-gray-400"
-                            value={item.actual || ""}
-                            placeholder="0"
-                            onChange={(e) => updateValue(item.id, e.target.value)}
-                          />
+                          <span className="font-medium text-sm text-gray-900">{item.actual}</span>
                         </div>
                       </div>
-
-                      <button 
-                        onClick={() => deleteItem(item.id)}
-                        className="text-white/80 hover:text-orange-600 transition p-2 rounded-full hover:bg-white/30"
-                        title="Remove Category"
-                      >
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                        </svg>
-                      </button>
                     </div>
                   </div>
                 ))
@@ -405,7 +436,7 @@ export default function App() {
           <TransactionsTab />
         )}
 
-        {/* Summary totals section - Solid Orange Split View */}
+        {/* Summary totals section */}
         <div className="mt-8 space-y-4">
           <div className="bg-orange-500 p-5 rounded-lg border border-orange-400">
             <p className="text-xs font-bold text-orange-200 uppercase">Budget Remaining</p>
