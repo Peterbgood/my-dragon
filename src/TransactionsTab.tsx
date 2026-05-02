@@ -85,18 +85,18 @@ export default function TransactionsTab() {
   return (
     <div className="space-y-6">
       {/* Add/Edit Transaction Form */}
-      <form id="transaction-form" onSubmit={addTransaction} className="flex gap-3 flex-col sm:flex-row">
+      <form id="transaction-form" onSubmit={addTransaction} className="flex gap-3 flex-col sm:flex-row sm:items-center">
         <input 
           type="text" 
           placeholder="Transaction description"
-          className="flex-1 p-3 border border-pink-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-pink-400 bg-white text-gray-800"
+          className="w-full sm:flex-1 p-3 border border-pink-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-pink-400 bg-white text-gray-800"
           value={newLabel}
           onChange={(e) => setNewLabel(e.target.value)}
         />
         <select 
           value={newCategory}
           onChange={(e) => setNewCategory(e.target.value)}
-          className="p-3 border border-pink-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-pink-400 bg-white text-gray-800 w-full sm:w-40"
+          className="w-full sm:w-36 p-3 border border-pink-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-pink-400 bg-white text-gray-800"
         >
           <option value="Groceries">Groceries</option>
           <option value="Utilities">Utilities</option>
@@ -106,17 +106,17 @@ export default function TransactionsTab() {
         <input 
           type="number" 
           placeholder="Amount ($)"
-          className="p-3 border border-pink-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-pink-400 bg-white text-gray-800 w-full sm:w-36"
+          className="w-full sm:w-32 p-3 border border-pink-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-pink-400 bg-white text-gray-800"
           value={newAmount}
           onChange={(e) => setNewAmount(Number(e.target.value))}
         />
         <input 
           type="date"
-          className="p-3 border border-pink-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-pink-400 bg-white text-gray-800 w-full sm:w-40"
+          className="w-full sm:w-40 p-3 border border-pink-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-pink-400 bg-white text-gray-800"
           value={newDate}
           onChange={(e) => setNewDate(e.target.value)}
         />
-        <button className="bg-orange-500 text-white px-5 py-3 rounded-lg font-bold hover:bg-orange-600 transition shadow-sm w-full sm:w-auto">
+        <button className="w-full sm:w-auto bg-orange-500 text-white px-5 py-3 rounded-lg font-bold hover:bg-orange-600 transition shadow-sm">
           {editingTransactionId ? "SAVE" : "+ ADD"}
         </button>
         {editingTransactionId && (
@@ -129,7 +129,7 @@ export default function TransactionsTab() {
               setNewAmount("");
               setNewDate("");
             }}
-            className="bg-gray-500 text-white px-5 py-3 rounded-lg font-bold hover:bg-gray-600 transition shadow-sm w-full sm:w-auto"
+            className="w-full sm:w-auto bg-gray-500 text-white px-5 py-3 rounded-lg font-bold hover:bg-gray-600 transition shadow-sm"
           >
             Cancel
           </button>
