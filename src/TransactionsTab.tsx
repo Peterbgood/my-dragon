@@ -85,7 +85,7 @@ export default function TransactionsTab() {
   return (
     <div className="space-y-6">
       {/* Add/Edit Transaction Form */}
-      <form id="transaction-form" onSubmit={addTransaction} className="flex gap-3 flex-col sm:flex-row sm:items-center">
+      <form id="transaction-form" onSubmit={addTransaction} className="flex flex-col sm:flex-row gap-3 sm:items-center">
         <input 
           type="text" 
           placeholder="Transaction description"
@@ -116,24 +116,28 @@ export default function TransactionsTab() {
           value={newDate}
           onChange={(e) => setNewDate(e.target.value)}
         />
-        <button className="w-full sm:w-auto bg-orange-500 text-white px-5 py-3 rounded-lg font-bold hover:bg-orange-600 transition shadow-sm">
-          {editingTransactionId ? "SAVE" : "+ ADD"}
-        </button>
-        {editingTransactionId && (
-          <button 
-            type="button"
-            onClick={() => {
-              setEditingTransactionId(null);
-              setNewLabel("");
-              setNewCategory("Groceries");
-              setNewAmount("");
-              setNewDate("");
-            }}
-            className="w-full sm:w-auto bg-gray-500 text-white px-5 py-3 rounded-lg font-bold hover:bg-gray-600 transition shadow-sm"
-          >
-            Cancel
+        
+        {/* Buttons wrapper to ensure they size correctly on mobile */}
+        <div className="flex gap-2 w-full sm:w-auto">
+          <button className="flex-1 sm:flex-none bg-orange-500 text-white px-5 py-3 rounded-lg font-bold hover:bg-orange-600 transition shadow-sm">
+            {editingTransactionId ? "SAVE" : "+ ADD"}
           </button>
-        )}
+          {editingTransactionId && (
+            <button 
+              type="button"
+              onClick={() => {
+                setEditingTransactionId(null);
+                setNewLabel("");
+                setNewCategory("Groceries");
+                setNewAmount("");
+                setNewDate("");
+              }}
+              className="flex-1 sm:flex-none bg-gray-500 text-white px-5 py-3 rounded-lg font-bold hover:bg-gray-600 transition shadow-sm"
+            >
+              Cancel
+            </button>
+          )}
+        </div>
       </form>
 
       {/* Transaction List */}
@@ -148,47 +152,49 @@ export default function TransactionsTab() {
               key={t.id} 
               className="flex flex-col md:flex-row md:items-center justify-between p-4 border border-orange-400 bg-orange-500 rounded-lg shadow-sm gap-4 transition-colors"
             >
-              <div className="flex items-center justify-between md:justify-start gap-3 w-full md:w-auto">
+              {/* Left Section (Label, Category, and Action Buttons) */}
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between md:justify-start gap-3 w-full md:w-auto">
                 <div>
-                  <span className="font-semibold block text-white">
+                  <span className="font-semibold block text-white text-base">
                     {t.label}
                   </span>
                 </div>
                 
-                <div className="ml-2">
+                <div className="flex items-center justify-between sm:justify-start gap-3 w-full sm:w-auto">
                   <span className="text-xs bg-orange-600/50 text-orange-100 px-2 py-1 rounded">
                     {t.category}
                   </span>
-                </div>
 
-                <div className="flex items-center gap-1 md:ml-4">
-                  <button 
-                    onClick={() => {
-                      setEditingTransactionId(t.id);
-                      setNewLabel(t.label);
-                      setNewCategory(t.category);
-                      setNewAmount(t.amount);
-                      setNewDate(t.date);
-                      scrollToForm();
-                    }}
-                    className="text-xs bg-gray-200 text-gray-700 px-2 py-1 rounded border border-gray-400 font-medium hover:bg-gray-300 transition"
-                  >
-                    Edit
-                  </button>
-                  <button 
-                    onClick={() => deleteItem(t.id)}
-                    className="text-white/80 hover:text-orange-600 transition p-2 rounded-full hover:bg-white/30"
-                    title="Remove Transaction"
-                  >
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                    </svg>
-                  </button>
+                  <div className="flex items-center gap-1 md:ml-4">
+                    <button 
+                      onClick={() => {
+                        setEditingTransactionId(t.id);
+                        setNewLabel(t.label);
+                        setNewCategory(t.category);
+                        setNewAmount(t.amount);
+                        setNewDate(t.date);
+                        scrollToForm();
+                      }}
+                      className="text-xs bg-gray-200 text-gray-700 px-2 py-1 rounded border border-gray-400 font-medium hover:bg-gray-300 transition"
+                    >
+                      Edit
+                    </button>
+                    <button 
+                      onClick={() => deleteItem(t.id)}
+                      className="text-white/80 hover:text-orange-600 transition p-2 rounded-full hover:bg-white/30"
+                      title="Remove Transaction"
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                      </svg>
+                    </button>
+                  </div>
                 </div>
               </div>
 
-              <div className="flex items-center justify-between md:justify-end gap-4 w-full md:w-auto border-t md:border-t-0 pt-4 md:pt-0 border-orange-400/30">
-                <div className="flex items-center gap-2 flex-1 sm:flex-none justify-between sm:justify-start">
+              {/* Right Section (Amount & Date) */}
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between md:justify-end gap-4 w-full md:w-auto border-t md:border-t-0 pt-4 md:pt-0 border-orange-400/30">
+                <div className="flex items-center gap-2 justify-between sm:justify-start w-full sm:w-auto">
                   <span className="text-xs font-bold text-gray-700 uppercase mr-1">Amount</span>
                   <div className="flex items-center border border-gray-400 rounded-md p-1.5 bg-white/70 w-32">
                     <span className="text-gray-500 mr-1">$</span>
@@ -196,7 +202,7 @@ export default function TransactionsTab() {
                   </div>
                 </div>
 
-                <div className="flex items-center gap-2 flex-1 sm:flex-none justify-between sm:justify-start">
+                <div className="flex items-center gap-2 justify-between sm:justify-start w-full sm:w-auto">
                   <span className="text-xs font-bold text-gray-700 uppercase mr-1">Date</span>
                   <span className="text-sm font-medium text-white">{t.date}</span>
                 </div>
