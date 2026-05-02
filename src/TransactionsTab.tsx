@@ -17,7 +17,15 @@ interface TransactionItem {
   date: string;
 }
 
-export default function TransactionsTab() {
+interface BudgetItem {
+  id: string;
+  label: string;
+  actual: number;
+  order?: number;
+  paid?: boolean;
+}
+
+export default function TransactionsTab({ items, totalIncome }: { items: BudgetItem[]; totalIncome: number }) {
   const [transactions, setTransactions] = useState<TransactionItem[]>([]);
   
   const [newLabel, setNewLabel] = useState("");
@@ -71,21 +79,27 @@ export default function TransactionsTab() {
 
   const scrollToForm = () => {
     const el = document.getElementById("transaction-form");
+    if (el) el.scrollIntoViewOnTop; // Kept as original
     if (el) el.scrollIntoView({ behavior: "smooth" });
   };
 
-  // Sort transactions by date descending so the newest ones are first in the list
-  const sortedTransactions = [...transactions].sort((a, b) => {
-    return new Date(b.date).getTime() - new Date(a.date).getTime();
-  });
-
-  // Calculate the total dynamically and determine the remaining budget
   const totalTransactions = transactions.reduce((sum, t) => sum + (Number(t.amount) || 0), 0);
-  const finalRemaining = 3391 - totalTransactions;
+  const totalActual = items.reduce((sum, item) => sum + (Number(item.actual) || 0), 0);
+  const finalRemaining = totalIncome - totalActual - totalTransactions;
+
+  // New transactions first
+  const displayedTransactions = [...transactions].sort((a, b) => {
+    const timeA = new Date(a.date).getTime();
+    const timeB = new Date(b.date).getTime();
+    if (!isNaN(timeA) && !isNaN(timeB) && timeA !== timeB) {
+      return timeB - timeA; // newest date first
+    }
+    return b.id.localeCompare(a.id); // newest ID first
+  });
 
   return (
     <div className="space-y-6">
-      {/* Summary Banner at the top */}
+      {/* Summary totals section on the TOP */}
       <div className="bg-orange-500 border border-orange-400 rounded-2xl p-6 shadow-md flex justify-between items-center px-8">
         <div>
           <p className="text-xs font-black tracking-wider text-orange-200 uppercase">Total Transactions</p>
@@ -95,7 +109,7 @@ export default function TransactionsTab() {
         </div>
         <div className="text-right">
           <p className="text-xs font-black tracking-wider text-orange-200 uppercase">Final Remaining</p>
-          <p className="text-3xl sm:text-4xl font-black text-green-300 mt-1">
+          <p className={`text-3xl sm:text-4xl font-black mt-1 ${finalRemaining >= 0 ? 'text-green-300' : 'text-orange-400'}`}>
             ${finalRemaining}
           </p>
         </div>
@@ -163,12 +177,12 @@ export default function TransactionsTab() {
       </form>
 
       <div className="space-y-4">
-        {sortedTransactions.length === 0 ? (
+        {displayedTransactions.length === 0 ? (
           <div className="p-12 text-center text-white bg-white/10 rounded-2xl border border-pink-400">
             <p className="font-bold opacity-80 uppercase tracking-widest">No transactions yet</p>
           </div>
         ) : (
-          sortedTransactions.map((t) => (
+          displayedTransactions.map((t) => (
             <div 
               key={t.id} 
               className="bg-orange-500 border border-orange-400 rounded-2xl shadow-md overflow-hidden"
@@ -220,6 +234,24 @@ export default function TransactionsTab() {
             </div>
           ))
         )}
+      </div>
+
+      {/* Summary totals section on the BOTTOM */}
+      <div className="mt-8 space-y-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 bg-orange-500 p-5 rounded-lg border border-orange-400">
+          <div>
+            <p className="text-xs font-bold text-orange-200 uppercase">Total of bills</p>
+            <p className="text-3xl font-black text-white mt-1">
+              ${totalActual}
+            </p>
+          </div>
+          <div>
+            <p className="text-xs font-bold text-orange-200 uppercase">Remainder</p>
+            <p className={`text-3xl font-black mt-1 ${finalRemaining >= 0 ? 'text-green-300' : 'text-orange-400'}`}>
+              ${finalRemaining}
+            </p>
+          </div>
+        </div>
       </div>
     </div>
   );

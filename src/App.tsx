@@ -433,16 +433,24 @@ export default function App() {
         )}
 
         {activeTab === "transactions" && (
-          <TransactionsTab />
+          <TransactionsTab items={items} totalIncome={totalIncome} />
         )}
 
         {/* Summary totals section */}
         <div className="mt-8 space-y-4">
-          <div className="bg-orange-500 p-5 rounded-lg border border-orange-400">
-            <p className="text-xs font-bold text-orange-200 uppercase">Budget Remaining</p>
-            <p className="text-3xl font-black text-white mt-1">
-              ${totalIncome - totalActual}
-            </p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 bg-orange-500 p-5 rounded-lg border border-orange-400">
+            <div>
+              <p className="text-xs font-bold text-orange-200 uppercase">Total Bill Amount</p>
+              <p className="text-3xl font-black text-white mt-1">
+                ${totalActual}
+              </p>
+            </div>
+            <div>
+              <p className="text-xs font-bold text-orange-200 uppercase">Budget Remaining</p>
+              <p className="text-3xl font-black text-white mt-1">
+                ${totalIncome - totalActual}
+              </p>
+            </div>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 bg-orange-500 p-5 rounded-lg border border-orange-400">
