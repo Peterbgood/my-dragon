@@ -33,7 +33,7 @@ export default function App() {
   const [transactions, setTransactions] = useState<TransactionItem[]>([]);
   
   // Tab State
-  const [activeTab, setActiveTab] = useState<"budget" | "transactions">("budget");
+  const [activeTab, setActiveTab] = useState<"budget" | "transactions">("transactions");
 
   // Budget states
   const [newItemLabel, setNewItemLabel] = useState("");

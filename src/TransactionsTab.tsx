@@ -74,12 +74,33 @@ export default function TransactionsTab() {
     if (el) el.scrollIntoView({ behavior: "smooth" });
   };
 
+  // Sort transactions by date descending so the newest ones are first in the list
+  const sortedTransactions = [...transactions].sort((a, b) => {
+    return new Date(b.date).getTime() - new Date(a.date).getTime();
+  });
+
+  // Calculate the total dynamically and determine the remaining budget
+  const totalTransactions = transactions.reduce((sum, t) => sum + (Number(t.amount) || 0), 0);
+  const finalRemaining = 3391 - totalTransactions;
+
   return (
     <div className="space-y-6">
-      {/* 
-          FIX: Added 'max-w-full' and 'overflow-hidden' to the form container 
-          to ensure iOS date pickers don't break the container.
-      */}
+      {/* Summary Banner at the top */}
+      <div className="bg-orange-500 border border-orange-400 rounded-2xl p-6 shadow-md flex justify-between items-center px-8">
+        <div>
+          <p className="text-xs font-black tracking-wider text-orange-200 uppercase">Total Transactions</p>
+          <p className="text-3xl sm:text-4xl font-black text-white mt-1">
+            ${totalTransactions}
+          </p>
+        </div>
+        <div className="text-right">
+          <p className="text-xs font-black tracking-wider text-orange-200 uppercase">Final Remaining</p>
+          <p className="text-3xl sm:text-4xl font-black text-green-300 mt-1">
+            ${finalRemaining}
+          </p>
+        </div>
+      </div>
+
       <form 
         id="transaction-form" 
         onSubmit={addTransaction} 
@@ -110,16 +131,12 @@ export default function TransactionsTab() {
               placeholder="Amount ($)"
               className="w-full sm:w-1/2 p-4 border border-pink-300 rounded-xl shadow-sm bg-white text-gray-800 text-lg"
               value={newAmount}
-              onChange={(e) => setNewAmount(Number(e.target.value))}
+              onChange={(e) => setNewAmount(Number(e.target.value) || "")}
             />
         </div>
 
         <input 
           type="date"
-          /* 
-             FIX: 'appearance-none' and 'min-w-0' helps iPhone 
-             behave better with date inputs in flex containers. 
-          */
           className="w-full p-4 border border-pink-300 rounded-xl shadow-sm bg-white text-gray-800 text-lg appearance-none min-w-0"
           value={newDate}
           onChange={(e) => setNewDate(e.target.value)}
@@ -146,12 +163,12 @@ export default function TransactionsTab() {
       </form>
 
       <div className="space-y-4">
-        {transactions.length === 0 ? (
+        {sortedTransactions.length === 0 ? (
           <div className="p-12 text-center text-white bg-white/10 rounded-2xl border border-pink-400">
             <p className="font-bold opacity-80 uppercase tracking-widest">No transactions yet</p>
           </div>
         ) : (
-          transactions.map((t) => (
+          sortedTransactions.map((t) => (
             <div 
               key={t.id} 
               className="bg-orange-500 border border-orange-400 rounded-2xl shadow-md overflow-hidden"
