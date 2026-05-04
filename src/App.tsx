@@ -129,7 +129,7 @@ export default function App() {
       if (/^\d$/.test(e.key)) {
         handleDigit(e.key);
       } else if (e.key === "Backspace") {
-        handleDeleteHandler();
+        handleDelete();
       } else if (e.key === "Enter") {
         if (pinInput.length === 4) {
           if (pinInput === "3270") {
@@ -143,8 +143,6 @@ export default function App() {
         }
       }
     };
-
-    const DeleteHandler = handleDelete;
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
@@ -296,8 +294,7 @@ export default function App() {
       <div className="max-w-2xl mx-auto">
         <header className="mb-8 border-b border-pink-400 pb-6 flex justify-between items-start">
           <div>
-           
-           <p class="text-pink-100 text-sm mt-1 text-center">Monthly Budget Strategy</p>
+            <p className="text-pink-100 text-sm mt-1 text-center">Monthly Budget Strategy</p>
           </div>
           <button 
             onClick={() => setIsUnlocked(false)}
