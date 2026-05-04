@@ -165,45 +165,35 @@ export default function TransactionsTab({ items, totalIncome }: { items: BudgetI
           displayedTransactions.map((t) => (
             <div 
               key={t.id} 
-              className="bg-orange-500 border border-orange-400 rounded-2xl shadow-md overflow-hidden"
+              className="bg-orange-500 border border-orange-400 rounded-xl p-3 shadow-sm flex items-center justify-between gap-4"
             >
-              <div className="p-4">
-                <div className="flex justify-between items-start mb-4">
-                  <h3 className="text-white font-black text-xl italic tracking-tight">{t.label}</h3>
-                  <div className="flex gap-2">
-                    <button 
-                      onClick={() => {
-                        setEditingTransactionId(t.id);
-                        setNewLabel(t.label);
-                        setNewAmount(t.amount);
-                        setNewDate(t.date);
-                        scrollToForm();
-                      }}
-                      className="bg-white/90 text-orange-600 px-3 py-1.5 rounded-lg text-xs font-black uppercase shadow-sm"
-                    >
-                      Edit
-                    </button>
-                    <button 
-                      onClick={() => deleteItem(t.id)}
-                      className="bg-orange-700/50 text-white p-1.5 rounded-lg hover:bg-red-600 transition"
-                    >
-                      <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                      </svg>
-                    </button>
-                  </div>
-                </div>
+              {/* Description and Date */}
+              <div className="flex flex-col min-w-0">
+                <h3 className="text-white font-black truncate">{t.label}</h3>
+                <p className="text-[10px] text-orange-200 font-bold uppercase">{t.date}</p>
+              </div>
 
-                <div className="flex justify-between items-end border-t border-orange-400/50 pt-3">
-                  <div>
-                    <p className="text-[10px] font-bold text-orange-200 uppercase">Amount</p>
-                    <p className="text-2xl font-black text-white">${t.amount}</p>
-                  </div>
-                  <div className="text-right">
-                    <p className="text-[10px] font-bold text-orange-200 uppercase">Date</p>
-                    <p className="text-sm font-bold text-white">{t.date}</p>
-                  </div>
-                </div>
+              {/* Amount and Actions */}
+              <div className="flex items-center gap-3 shrink-0">
+                <span className="text-white font-black text-lg">${t.amount}</span>
+                <button 
+                  onClick={() => {
+                    setEditingTransactionId(t.id);
+                    setNewLabel(t.label);
+                    setNewAmount(t.amount);
+                    setNewDate(t.date);
+                    scrollToForm();
+                  }}
+                  className="bg-white/90 text-orange-600 px-2 py-1 rounded text-[10px] font-black uppercase"
+                >
+                  Edit
+                </button>
+                <button 
+                  onClick={() => deleteItem(t.id)}
+                  className="text-white/80 hover:text-white"
+                >
+                  ✕
+                </button>
               </div>
             </div>
           ))
