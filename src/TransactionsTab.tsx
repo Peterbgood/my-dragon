@@ -32,6 +32,9 @@ export default function TransactionsTab({ items, totalIncome }: { items: BudgetI
   const [newDate, setNewDate] = useState("");
   const [editingTransactionId, setEditingTransactionId] = useState<string | null>(null);
 
+  // Selection state to keep track of selected transaction IDs
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+
   useEffect(() => {
     const unsubscribe = onSnapshot(collection(db, "transactions"), (snapshot) => {
       const data = snapshot.docs.map((doc) => ({
@@ -77,9 +80,27 @@ export default function TransactionsTab({ items, totalIncome }: { items: BudgetI
     if (el) el.scrollIntoView({ behavior: "smooth" });
   };
 
+  // Toggle selection on a transaction
+  const toggleSelection = (id: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+      return next;
+    });
+  };
+
   const totalTransactions = transactions.reduce((sum, t) => sum + (Number(t.amount) || 0), 0);
   const totalActual = items.reduce((sum, item) => sum + (Number(item.actual) || 0), 0);
   const finalRemaining = totalIncome - totalActual - totalTransactions;
+
+  // Calculate the tally for only the selected items
+  const selectedTotal = transactions
+    .filter((t) => selectedIds.has(t.id))
+    .reduce((sum, t) => sum + (Number(t.amount) || 0), 0);
 
   const displayedTransactions = [...transactions].sort((a, b) => {
     const timeA = new Date(a.date).getTime();
@@ -91,7 +112,25 @@ export default function TransactionsTab({ items, totalIncome }: { items: BudgetI
   });
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 relative">
+      {/* Floating Tally Dashboard */}
+      {selectedIds.size > 0 && (
+        <div className="fixed top-4 right-4 z-50 bg-green-600 border border-green-500 rounded-2xl p-4 shadow-xl flex items-center gap-4 text-white">
+          <div>
+            <p className="text-[10px] font-black tracking-wider text-green-200 uppercase">Selected Tally</p>
+            <p className="text-2xl font-black mt-0.5">
+              ${selectedTotal}
+            </p>
+          </div>
+          <button 
+            onClick={() => setSelectedIds(new Set())}
+            className="text-xs bg-white text-green-600 px-2.5 py-1.5 font-black rounded-lg uppercase tracking-wider hover:bg-gray-100 transition shadow-sm"
+          >
+            Clear
+          </button>
+        </div>
+      )}
+
       <div className="bg-orange-500 border border-orange-400 rounded-2xl p-6 shadow-md flex justify-between items-center px-8">
         <div>
           <p className="text-xs font-black tracking-wider text-orange-200 uppercase">Total Transactions</p>
@@ -162,41 +201,59 @@ export default function TransactionsTab({ items, totalIncome }: { items: BudgetI
             <p className="font-bold opacity-80 uppercase tracking-widest">No transactions yet</p>
           </div>
         ) : (
-          displayedTransactions.map((t) => (
-            <div 
-              key={t.id} 
-              className="bg-orange-500 border border-orange-400 rounded-xl p-3 shadow-sm flex items-center justify-between gap-4"
-            >
-              {/* Description and Date */}
-              <div className="flex flex-col min-w-0">
-                <h3 className="text-white font-black truncate">{t.label}</h3>
-                <p className="text-[10px] text-orange-200 font-bold uppercase">{t.date}</p>
-              </div>
+          displayedTransactions.map((t) => {
+            const isSelected = selectedIds.has(t.id);
+            return (
+              <div 
+                key={t.id} 
+                onClick={() => toggleSelection(t.id)}
+                className={`border rounded-xl p-3 shadow-sm flex items-center justify-between gap-4 cursor-pointer transition-colors ${
+                  isSelected 
+                    ? "bg-green-300 border-green-500 text-green-900" 
+                    : "bg-orange-500 border-orange-400 text-white"
+                }`}
+              >
+                {/* Description and Date */}
+                <div className="flex flex-col min-w-0">
+                  <h3 className={`font-black truncate ${isSelected ? "text-green-900" : "text-white"}`}>
+                    {t.label}
+                  </h3>
+                  <p className={`text-[10px] font-bold uppercase ${isSelected ? "text-green-700/70" : "text-orange-200"}`}>
+                    {t.date}
+                  </p>
+                </div>
 
-              {/* Amount and Actions */}
-              <div className="flex items-center gap-3 shrink-0">
-                <span className="text-white font-black text-lg">${t.amount}</span>
-                <button 
-                  onClick={() => {
-                    setEditingTransactionId(t.id);
-                    setNewLabel(t.label);
-                    setNewAmount(t.amount);
-                    setNewDate(t.date);
-                    scrollToForm();
-                  }}
-                  className="bg-white/90 text-orange-600 px-2 py-1 rounded text-[10px] font-black uppercase"
-                >
-                  Edit
-                </button>
-                <button 
-                  onClick={() => deleteItem(t.id)}
-                  className="text-white/80 hover:text-white"
-                >
-                  ✕
-                </button>
+                {/* Amount and Actions */}
+                <div className="flex items-center gap-3 shrink-0" onClick={(e) => e.stopPropagation()}>
+                  <span className={`font-black text-lg ${isSelected ? "text-green-900" : "text-white"}`}>
+                    ${t.amount}
+                  </span>
+                  <button 
+                    onClick={() => {
+                      setEditingTransactionId(t.id);
+                      setNewLabel(t.label);
+                      setNewAmount(t.amount);
+                      setNewDate(t.date);
+                      scrollToForm();
+                    }}
+                    className={`px-2 py-1 rounded text-[10px] font-black uppercase ${
+                      isSelected 
+                        ? "bg-green-700/20 text-green-900 hover:bg-green-700/30" 
+                        : "bg-white/90 text-orange-600 hover:bg-white"
+                    }`}
+                  >
+                    Edit
+                  </button>
+                  <button 
+                    onClick={() => deleteItem(t.id)}
+                    className={`hover:text-white/50 ${isSelected ? "text-green-900/60" : "text-white/80 hover:text-white"}`}
+                  >
+                    ✕
+                  </button>
+                </div>
               </div>
-            </div>
-          ))
+            );
+          })
         )}
       </div>
     </div>
