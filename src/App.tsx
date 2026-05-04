@@ -400,93 +400,87 @@ export default function App() {
               )}
             </form>
 
-            <div className="space-y-3">
+            <div className="space-y-4">
               {items.length === 0 ? (
-                <div className="p-12 text-center text-white bg-white/10 rounded-lg border border-pink-400">
-                  <p className="font-medium text-white mb-1">No budget fields yet</p>
+                <div className="p-12 text-center text-white bg-white/10 rounded-2xl border border-pink-400">
+                  <p className="font-bold opacity-80 uppercase tracking-widest">No budget fields yet</p>
                 </div>
               ) : (
                 items.map((item, index) => (
                   <div 
                     key={item.id} 
-                    className={`flex flex-col md:flex-row md:items-center justify-between p-4 border rounded-lg shadow-sm gap-4 transition-colors ${
+                    className={`flex items-center justify-between p-3 border rounded-xl shadow-sm gap-4 transition-colors ${
                       item.paid 
                         ? 'bg-green-300 border-green-500' 
                         : 'bg-orange-500 border-orange-400'
                     }`}
                   >
-                    <div className="flex items-center justify-between md:justify-start gap-3 w-full md:w-auto">
-                      <div className="flex items-center gap-3">
-                        {/* Paid Checkbox */}
-                        <input 
-                          type="checkbox" 
-                          checked={item.paid || false}
-                          onChange={() => togglePaid(item.id, !!item.paid)}
-                          className="h-5 w-5 rounded border-gray-400 text-green-600 focus:ring-pink-500 cursor-pointer"
-                          title="Mark as paid"
-                        />
+                    {/* Left side: Checkbox, Controls, Label */}
+                    <div className="flex items-center gap-3 min-w-0 flex-1">
+                      <input 
+                        type="checkbox" 
+                        checked={item.paid || false}
+                        onChange={() => togglePaid(item.id, !!item.paid)}
+                        className="h-5 w-5 rounded border-gray-400 text-green-600 focus:ring-pink-500 cursor-pointer flex-shrink-0"
+                        title="Mark as paid"
+                      />
 
-                        {/* Up/Down controls */}
-                        <div className="flex items-center gap-2 select-none">
-                          <div className="flex flex-col gap-1">
-                            <button 
-                              onClick={() => moveUp(index)} 
-                              disabled={index === 0}
-                              className="text-gray-300 hover:text-pink-600 p-0.5 disabled:opacity-30 disabled:cursor-not-allowed"
-                              title="Move Up"
-                            >
-                              ▲
-                            </button>
-                            <button 
-                              onClick={() => constDown(index)} 
-                              disabled={index === items.length - 1}
-                              className="text-gray-300 hover:text-pink-600 p-0.5 disabled:opacity-30 disabled:cursor-not-allowed"
-                              title="Move Down"
-                            >
-                              ▼
-                            </button>
-                          </div>
-                        </div>
-
-                        <div>
-                          <span className={`font-semibold block ${item.paid ? 'text-green-900' : 'text-white'}`}>
-                            {item.label}
-                          </span>
-                        </div>
+                      {/* Up/Down controls */}
+                      <div className="flex flex-col gap-0.5 select-none flex-shrink-0">
+                        <button 
+                          onClick={() => moveUp(index)} 
+                          disabled={index === 0}
+                          className={`text-[9px] leading-none p-0.5 ${item.paid ? 'text-green-700/60 hover:text-green-900' : 'text-orange-200/80 hover:text-white'} disabled:opacity-30`}
+                          title="Move Up"
+                        >
+                          ▲
+                        </button>
+                        <button 
+                          onClick={() => constDown(index)} 
+                          disabled={index === items.length - 1}
+                          className={`text-[9px] leading-none p-0.5 ${item.paid ? 'text-green-700/60 hover:text-green-900' : 'text-orange-200/80 hover:text-white'} disabled:opacity-30`}
+                          title="Move Down"
+                        >
+                          ▼
+                        </button>
                       </div>
 
-                      <div className="flex items-center gap-1 md:ml-4">
-                        <button 
-                          onClick={() => { 
-                            setEditingBudgetId(item.id); 
-                            setNewItemLabel(item.label); 
-                            setNewItemAmount(item.actual);
-                            scrollToForm();
-                          }}
-                          className="text-xs bg-gray-200 text-gray-700 px-2 py-1 rounded border border-gray-400 font-medium hover:bg-gray-300 transition"
-                        >
-                          Edit
-                        </button>
-                        <button 
-                          onClick={() => deleteItem(item.id)}
-                          className="text-white/80 hover:text-orange-600 transition p-2 rounded-full hover:bg-white/30"
-                          title="Remove Category"
-                        >
-                          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                          </svg>
-                        </button>
+                      <div className="min-w-0">
+                        <h3 className={`font-black truncate ${item.paid ? 'text-green-900' : 'text-white'}`}>
+                          {item.label}
+                        </h3>
                       </div>
                     </div>
 
-                    <div className="flex items-center justify-between md:justify-end gap-4 w-full md:w-auto border-t md:border-t-0 pt-4 md:pt-0 border-orange-400/30">
-                      <div className="flex items-center gap-2 flex-1 sm:flex-none justify-between sm:justify-start">
-                        <label className="text-xs font-bold text-gray-700 uppercase mr-1 sm:mr-0">Amount</label>
-                        <div className="flex items-center border border-gray-400 rounded-md p-1.5 bg-white/70 w-32">
-                          <span className="text-gray-500 mr-1">$</span>
-                          <span className="font-medium text-sm text-gray-900">{item.actual}</span>
-                        </div>
-                      </div>
+                    {/* Right side: Amount and Actions */}
+                    <div className="flex items-center gap-3 shrink-0">
+                      <span className={`font-black text-lg ${item.paid ? 'text-green-900' : 'text-white'}`}>
+                        ${item.actual}
+                      </span>
+                      
+                      <button 
+                        onClick={() => { 
+                          setEditingBudgetId(item.id); 
+                          setNewItemLabel(item.label); 
+                          setNewItemAmount(item.actual);
+                          scrollToForm();
+                        }}
+                        className={`px-2 py-1 rounded text-[10px] font-black uppercase ${
+                          item.paid 
+                            ? 'bg-green-700/20 text-green-900 hover:bg-green-700/30' 
+                            : 'bg-white/90 text-orange-600 hover:bg-white'
+                        }`}
+                      >
+                        Edit
+                      </button>
+                      
+                      <button 
+                        onClick={() => deleteItem(item.id)}
+                        className={`hover:text-white/50 ${item.paid ? 'text-green-900/80 hover:text-green-900' : 'text-white/80'}`}
+                        title="Remove Category"
+                      >
+                        ✕
+                      </button>
                     </div>
                   </div>
                 ))
