@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { 
   collection, 
   addDoc, 
@@ -93,6 +93,21 @@ export default function App() {
     fetchIncome();
   }, []);
 
+  // PIN Actions and Keypad events
+  const handleDigit = useCallback((digit: string) => {
+    if (pinInput.length < 4) {
+      setPinInput((prev) => prev + digit);
+    }
+  }, [pinInput]);
+
+  const handleDelete = useCallback(() => {
+    setPinInput((prev) => prev.slice(0, -1));
+  }, []);
+
+  const handleClear = useCallback(() => {
+    setPinInput("");
+  }, []);
+
   // 2. Auto Unlock Mechanism
   useEffect(() => {
     if (pinInput.length === 4) {
@@ -106,6 +121,34 @@ export default function App() {
       }
     }
   }, [pinInput]);
+
+  // Desktop keyboard handler
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (isUnlocked) return;
+      if (/^\d$/.test(e.key)) {
+        handleDigit(e.key);
+      } else if (e.key === "Backspace") {
+        handleDeleteHandler();
+      } else if (e.key === "Enter") {
+        if (pinInput.length === 4) {
+          if (pinInput === "3270") {
+            setIsUnlocked(true);
+            setPinError("");
+            setPinInput("");
+          } else {
+            setPinError("Incorrect PIN. Please try again.");
+            setPinInput("");
+          }
+        }
+      }
+    };
+
+    const DeleteHandler = handleDelete;
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [isUnlocked, handleDigit, handleDelete, pinInput]);
 
   const saveIncome = async () => {
     try {
@@ -124,14 +167,12 @@ export default function App() {
     if (!newItemLabel.trim()) return;
     
     if (editingBudgetId) {
-      // Save changes to original field
       await updateDoc(doc(db, "budget", editingBudgetId), { 
         label: newItemLabel,
         actual: Number(newItemAmount) || 0,
       });
       setEditingBudgetId(null);
     } else {
-      // Add new field
       await addDoc(collection(db, "budget"), {
         label: newItemLabel,
         actual: Number(newItemAmount) || 0,
@@ -155,23 +196,17 @@ export default function App() {
     const currentItem = items[index];
     const prevItem = items[index - 1];
 
-    const currentOrder = currentItem.order !== undefined ? currentItem.order : index;
-    const prevOrder = prevItem.order !== undefined ? prevItem.order : index - 1;
-
-    await updateDoc(doc(db, "budget", currentItem.id), { order: prevOrder });
-    await updateDoc(doc(db, "budget", prevItem.id), { order: currentOrder });
+    await updateDoc(doc(db, "budget", currentItem.id), { order: prevItem.order ?? index - 1 });
+    await updateDoc(doc(db, "budget", prevItem.id), { order: currentItem.order ?? index });
   };
 
-  const moveDown = async (index: number) => {
+  const constDown = async (index: number) => {
     if (index === items.length - 1) return;
     const currentItem = items[index];
     const nextItem = items[index + 1];
 
-    const currentOrder = currentItem.order !== undefined ? currentItem.order : index;
-    const nextOrder = nextItem.order !== undefined ? nextItem.order : index + 1;
-
-    await updateDoc(doc(db, "budget", currentItem.id), { order: nextOrder });
-    await updateDoc(doc(db, "budget", nextItem.id), { order: currentOrder });
+    await updateDoc(doc(db, "budget", currentItem.id), { order: nextItem.order ?? index + 1 });
+    await updateDoc(doc(db, "budget", nextItem.id), { order: currentItem.order ?? index });
   };
 
   // 7. Paid Checkbox Handler
@@ -194,29 +229,60 @@ export default function App() {
   if (!isUnlocked) {
     return (
       <div className="min-h-screen flex items-center justify-center p-4" style={{ backgroundColor: "#E6007E" }}>
-        <div className="bg-white p-8 rounded-2xl shadow-md border border-gray-100 max-w-sm w-full text-center">
+        <div className="w-full max-w-sm bg-white p-8 rounded-2xl shadow-md border border-gray-100 flex flex-col items-center text-center">
           <h1 className="text-3xl font-black text-pink-600 italic tracking-wider mb-2">MY DRAGON</h1>
           <p className="text-gray-500 text-sm mb-6">Enter your 4-digit PIN to access budget</p>
           
-          <div className="space-y-4">
-            <div>
-              <input 
-                type="password"
-                inputMode="numeric"
-                pattern="[0-9]*"
-                maxLength={4}
-                value={pinInput}
-                onChange={(e) => setPinInput(e.target.value)}
-                placeholder="••••"
-                autoFocus
-                className="w-full p-4 text-center text-2xl tracking-widest border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-pink-500 bg-gray-50"
+          {/* Pin Indicator Dots */}
+          <div className="flex gap-4 mb-6">
+            {Array.from({ length: 4 }).map((_, idx) => (
+              <div
+                key={idx}
+                className={`w-4 h-4 rounded-full transition-all duration-200 ${
+                  idx < pinInput.length 
+                    ? "bg-pink-600" 
+                    : "bg-gray-200 border border-gray-300"
+                }`}
               />
-            </div>
-            
-            {pinError && (
-              <p className="text-orange-500 text-sm font-medium animate-pulse">{pinError}</p>
-            )}
+            ))}
           </div>
+
+          <div className="grid grid-cols-3 gap-3 w-full mb-6">
+            {[1, 2, 3, 4, 5, 6, 7, 8, 9].map((num) => (
+              <button
+                key={num}
+                onClick={() => handleDigit(num.toString())}
+                className="h-12 bg-gray-50 hover:bg-gray-100 text-gray-800 text-xl font-black rounded-xl flex items-center justify-center transition border border-gray-300 shadow-sm"
+              >
+                {num}
+              </button>
+            ))}
+            
+            <button
+              onClick={handleClear}
+              className="h-12 bg-gray-200 hover:bg-gray-300 text-gray-700 text-xs font-black rounded-xl flex items-center justify-center transition shadow-sm"
+            >
+              CLEAR
+            </button>
+            
+            <button
+              onClick={() => handleDigit("0")}
+              className="h-12 bg-gray-50 hover:bg-gray-100 text-gray-800 text-xl font-black rounded-xl flex items-center justify-center transition border border-gray-300 shadow-sm"
+            >
+              0
+            </button>
+            
+            <button
+              onClick={handleDelete}
+              className="h-12 bg-gray-200 hover:bg-gray-300 text-gray-700 text-lg font-black rounded-xl flex items-center justify-center transition shadow-sm"
+            >
+              ⌫
+            </button>
+          </div>
+          
+          {pinError && (
+            <p className="text-orange-500 text-sm font-medium animate-pulse">{pinError}</p>
+          )}
         </div>
       </div>
     );
@@ -230,8 +296,8 @@ export default function App() {
       <div className="max-w-2xl mx-auto">
         <header className="mb-8 border-b border-pink-400 pb-6 flex justify-between items-start">
           <div>
-            <h1 className="text-4xl font-black text-white italic tracking-wider">MY DRAGON</h1>
-            <p className="text-pink-100 text-sm mt-1">Monthly Budget Strategy</p>
+           
+           <p class="text-pink-100 text-sm mt-1 text-center">Monthly Budget Strategy</p>
           </div>
           <button 
             onClick={() => setIsUnlocked(false)}
@@ -375,7 +441,7 @@ export default function App() {
                               ▲
                             </button>
                             <button 
-                              onClick={() => moveDown(index)} 
+                              onClick={() => constDown(index)} 
                               disabled={index === items.length - 1}
                               className="text-gray-300 hover:text-pink-600 p-0.5 disabled:opacity-30 disabled:cursor-not-allowed"
                               title="Move Down"
