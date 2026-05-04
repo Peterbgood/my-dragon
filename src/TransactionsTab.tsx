@@ -12,7 +12,6 @@ import { db } from "./firebase";
 interface TransactionItem {
   id: string;
   label: string;
-  category: string;
   amount: number;
   date: string;
 }
@@ -29,7 +28,6 @@ export default function TransactionsTab({ items, totalIncome }: { items: BudgetI
   const [transactions, setTransactions] = useState<TransactionItem[]>([]);
   
   const [newLabel, setNewLabel] = useState("");
-  const [newCategory, setNewCategory] = useState("Groceries");
   const [newAmount, setNewAmount] = useState<number | "">("");
   const [newDate, setNewDate] = useState("");
   const [editingTransactionId, setEditingTransactionId] = useState<string | null>(null);
@@ -53,7 +51,6 @@ export default function TransactionsTab({ items, totalIncome }: { items: BudgetI
       const docRef = doc(db, "transactions", editingTransactionId);
       await updateDoc(docRef, {
         label: newLabel,
-        category: newCategory,
         amount: Number(newAmount) || 0,
         date: newDate || new Date().toISOString().split("T")[0],
       });
@@ -61,14 +58,12 @@ export default function TransactionsTab({ items, totalIncome }: { items: BudgetI
     } else {
       await addDoc(collection(db, "transactions"), {
         label: newLabel,
-        category: newCategory,
         amount: Number(newAmount) || 0,
         date: newDate || new Date().toISOString().split("T")[0],
       });
     }
 
     setNewLabel("");
-    setNewCategory("Groceries");
     setNewAmount("");
     setNewDate("");
   };
@@ -86,7 +81,6 @@ export default function TransactionsTab({ items, totalIncome }: { items: BudgetI
   const totalActual = items.reduce((sum, item) => sum + (Number(item.actual) || 0), 0);
   const finalRemaining = totalIncome - totalActual - totalTransactions;
 
-  // New transactions first
   const displayedTransactions = [...transactions].sort((a, b) => {
     const timeA = new Date(a.date).getTime();
     const timeB = new Date(b.date).getTime();
@@ -98,7 +92,6 @@ export default function TransactionsTab({ items, totalIncome }: { items: BudgetI
 
   return (
     <div className="space-y-6">
-      {/* Summary totals section on the TOP */}
       <div className="bg-orange-500 border border-orange-400 rounded-2xl p-6 shadow-md flex justify-between items-center px-8">
         <div>
           <p className="text-xs font-black tracking-wider text-orange-200 uppercase">Total Transactions</p>
@@ -127,26 +120,13 @@ export default function TransactionsTab({ items, totalIncome }: { items: BudgetI
           onChange={(e) => setNewLabel(e.target.value)}
         />
         
-        <div className="flex flex-col sm:flex-row gap-3">
-            <select 
-              value={newCategory}
-              onChange={(e) => setNewCategory(e.target.value)}
-              className="w-full sm:w-1/2 p-4 border border-pink-300 rounded-xl shadow-sm bg-white text-gray-800 text-lg"
-            >
-              <option value="Groceries">Groceries</option>
-              <option value="Utilities">Utilities</option>
-              <option value="Entertainment">Entertainment</option>
-              <option value="Other">Other</option>
-            </select>
-
-            <input 
-              type="number" 
-              placeholder="Amount ($)"
-              className="w-full sm:w-1/2 p-4 border border-pink-300 rounded-xl shadow-sm bg-white text-gray-800 text-lg"
-              value={newAmount}
-              onChange={(e) => setNewAmount(Number(e.target.value) || "")}
-            />
-        </div>
+        <input 
+          type="number" 
+          placeholder="Amount ($)"
+          className="w-full p-4 border border-pink-300 rounded-xl shadow-sm bg-white text-gray-800 text-lg"
+          value={newAmount}
+          onChange={(e) => setNewAmount(Number(e.target.value) || "")}
+        />
 
         <input 
           type="date"
@@ -185,38 +165,45 @@ export default function TransactionsTab({ items, totalIncome }: { items: BudgetI
           displayedTransactions.map((t) => (
             <div 
               key={t.id} 
-              className="bg-orange-500 border border-orange-400 rounded-2xl p-4 shadow-md flex justify-between items-center"
+              className="bg-orange-500 border border-orange-400 rounded-2xl shadow-md overflow-hidden"
             >
-              {/* Left Side: Name and Date */}
-              <div className="text-left">
-                <h3 className="text-white font-black text-xl italic tracking-tight">{t.label}</h3>
-                <p className="text-[10px] font-bold text-orange-200 uppercase mt-0.5">{t.date}</p>
-              </div>
+              <div className="p-4">
+                <div className="flex justify-between items-start mb-4">
+                  <h3 className="text-white font-black text-xl italic tracking-tight">{t.label}</h3>
+                  <div className="flex gap-2">
+                    <button 
+                      onClick={() => {
+                        setEditingTransactionId(t.id);
+                        setNewLabel(t.label);
+                        setNewAmount(t.amount);
+                        setNewDate(t.date);
+                        scrollToForm();
+                      }}
+                      className="bg-white/90 text-orange-600 px-3 py-1.5 rounded-lg text-xs font-black uppercase shadow-sm"
+                    >
+                      Edit
+                    </button>
+                    <button 
+                      onClick={() => deleteItem(t.id)}
+                      className="bg-orange-700/50 text-white p-1.5 rounded-lg hover:bg-red-600 transition"
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                      </svg>
+                    </button>
+                  </div>
+                </div>
 
-              {/* Right Side: Amount and Actions */}
-              <div className="flex items-center gap-4">
-                <span className="text-white font-black text-2xl">${t.amount}</span>
-                <button 
-                  onClick={() => {
-                    setEditingTransactionId(t.id);
-                    setNewLabel(t.label);
-                    setNewCategory(t.category);
-                    setNewAmount(t.amount);
-                    setNewDate(t.date);
-                    scrollToForm();
-                  }}
-                  className="bg-white/90 text-orange-600 px-3 py-1.5 rounded-lg text-xs font-black uppercase shadow-sm"
-                >
-                  Edit
-                </button>
-                <button 
-                  onClick={() => deleteItem(t.id)}
-                  className="bg-orange-700/50 text-white p-1.5 rounded-lg hover:bg-red-600 transition"
-                >
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                  </svg>
-                </button>
+                <div className="flex justify-between items-end border-t border-orange-400/50 pt-3">
+                  <div>
+                    <p className="text-[10px] font-bold text-orange-200 uppercase">Amount</p>
+                    <p className="text-2xl font-black text-white">${t.amount}</p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-[10px] font-bold text-orange-200 uppercase">Date</p>
+                    <p className="text-sm font-bold text-white">{t.date}</p>
+                  </div>
+                </div>
               </div>
             </div>
           ))
