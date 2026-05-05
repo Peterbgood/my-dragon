@@ -159,20 +159,25 @@ export default function TransactionsTab({ items, totalIncome }: { items: BudgetI
           onChange={(e) => setNewLabel(e.target.value)}
         />
         
-        <input 
-          type="number" 
-          placeholder="Amount ($)"
-          className="w-full p-4 border border-pink-300 rounded-xl shadow-sm bg-white text-gray-800 text-lg"
-          value={newAmount}
-          onChange={(e) => setNewAmount(Number(e.target.value) || "")}
-        />
+        <div className="flex gap-3 w-full">
+          <input 
+            type="number" 
+            placeholder="Amount ($)"
+            className="flex-1 p-4 border border-pink-300 rounded-xl shadow-sm bg-white text-gray-800 text-lg"
+            value={newAmount}
+            onChange={(e) => setNewAmount(Number(e.target.value) || "")}
+          />
 
-        <input 
-          type="date"
-          className="w-full p-4 border border-pink-300 rounded-xl shadow-sm bg-white text-gray-800 text-lg appearance-none min-w-0"
-          value={newDate}
-          onChange={(e) => setNewDate(e.target.value)}
-        />
+          <div className="relative p-4 border border-pink-300 rounded-xl shadow-sm bg-white text-gray-800 text-lg flex items-center justify-center min-w-[4rem] text-center font-bold cursor-pointer">
+            <span>{new Date(newDate ? newDate + 'T00:00:00' : Date.now()).getDate()}</span>
+            <input 
+              type="date"
+              className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
+              value={newDate}
+              onChange={(e) => setNewDate(e.target.value)}
+            />
+          </div>
+        </div>
         
         <div className="flex gap-2 w-full">
           <button className="flex-1 bg-orange-500 text-white p-4 rounded-xl font-black text-xl hover:bg-orange-600 transition shadow-md uppercase tracking-wider">
