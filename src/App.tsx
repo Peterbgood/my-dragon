@@ -7,7 +7,8 @@ import {
   deleteDoc, 
   doc,
   getDoc,
-  setDoc
+  setDoc,
+  getDocs
 } from "firebase/firestore";
 import { db } from "./firebase";
 import TransactionsTab from "./TransactionsTab";
@@ -23,14 +24,26 @@ interface BudgetItem {
 interface TransactionItem {
   id: string;
   label: string;
-  category: string;
   amount: number;
   date: string;
+}
+
+interface MonthlyArchive {
+  id: string;
+  monthYear: string;
+  items: BudgetItem[];
+  transactions: TransactionItem[];
+  totalIncome: number;
+  totalActual: number;
+  totalTransactions: number;
+  remainingBudget: number;
+  archivedAt: string;
 }
 
 export default function App() {
   const [items, setItems] = useState<BudgetItem[]>([]);
   const [transactions, setTransactions] = useState<TransactionItem[]>([]);
+  const [archives, setArchives] = useState<MonthlyArchive[]>([]);
   
   // Tab State
   const [activeTab, setActiveTab] = useState<"budget" | "transactions">("transactions");
@@ -47,6 +60,11 @@ export default function App() {
   const [isUnlocked, setIsUnlocked] = useState(false);
   const [pinInput, setPinInput] = useState("");
   const [pinError, setPinError] = useState("");
+
+  // UI Messages State (Replaces pop-ups)
+  const [newArchiveName, setNewArchiveName] = useState("");
+  const [statusMsg, setStatusMsg] = useState("");
+  const [errorMsg, setErrorMsg] = useState("");
 
   // 1. Read: Listen for real-time updates from Budget Firestore
   useEffect(() => {
@@ -71,6 +89,18 @@ export default function App() {
       })) as TransactionItem[];
       
       setTransactions(data);
+    });
+    return () => unsubscribe();
+  }, []);
+
+  // Read Archives
+  useEffect(() => {
+    const unsubscribe = onSnapshot(collection(db, "archives"), (snapshot) => {
+      const data = snapshot.docs.map((doc) => ({
+        id: doc.id,
+        ...doc.data(),
+      })) as MonthlyArchive[];
+      setArchives(data);
     });
     return () => unsubscribe();
   }, []);
@@ -146,7 +176,7 @@ export default function App() {
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [isUnlocked, handleDigit, handleDelete, pinInput]);
+  }, [isUnlocked, handleDigit, pinInput, handleDelete]);
 
   const saveIncome = async () => {
     try {
@@ -156,6 +186,89 @@ export default function App() {
       }
     } catch (e) {
       console.error("Error updating income: ", e);
+    }
+  };
+
+  // Archive functionality: Archives transactions only and deletes active transactions, budget remains intact
+  const archiveCurrentMonth = async () => {
+    if (!newArchiveName.trim()) {
+      setErrorMsg("Please enter an archive identifier before archiving.");
+      setStatusMsg("");
+      return;
+    }
+
+    const totalActualSum = items.reduce((sum, item) => sum + (Number(item.actual) || 0), 0);
+    const totalTransactionsSum = transactions.reduce((sum, t) => sum + (Number(t.amount) || 0), 0);
+    const remainingBudget = totalIncome - totalActualSum - totalTransactionsSum;
+
+    const archiveData: Omit<MonthlyArchive, 'id'> = {
+      monthYear: newArchiveName,
+      items,
+      transactions,
+      totalIncome,
+      totalActual: totalActualSum,
+      totalTransactions: totalTransactionsSum,
+      remainingBudget,
+      archivedAt: new Date().toISOString(),
+    };
+
+    try {
+      // 1. Save data to archives
+      await addDoc(collection(db, "archives"), archiveData);
+
+      // 2. Clear active transactions in Firestore
+      const transSnapshot = await getDocs(collection(db, "transactions"));
+      for (const docSnap of transSnapshot.docs) {
+        await deleteDoc(doc(db, "transactions", docSnap.id));
+      }
+
+      setStatusMsg(`Successfully archived the month of ${newArchiveName}!`);
+      setErrorMsg("");
+      setNewArchiveName("");
+    } catch (err) {
+      console.error("Error archiving month:", err);
+      setErrorMsg("Failed to archive the month.");
+      setStatusMsg("");
+    }
+  };
+
+  // Delete Archive Functionality
+  const deleteArchive = async (id: string) => {
+    try {
+      await deleteDoc(doc(db, "archives", id));
+      setStatusMsg("Archive deleted successfully.");
+      setErrorMsg("");
+    } catch (err) {
+      console.error("Error deleting archive:", err);
+      setErrorMsg("Failed to delete archive.");
+      setStatusMsg("");
+    }
+  };
+
+  // Restore functionality
+  const restoreMonth = async (archive: MonthlyArchive) => {
+    try {
+      // 1. Clear current active transactions
+      const transSnapshot = await getDocs(collection(db, "transactions"));
+      for (const docSnap of transSnapshot.docs) {
+        await deleteDoc(doc(db, "transactions", docSnap.id));
+      }
+
+      // 2. Restore transactions from the archive
+      for (const t of archive.transactions) {
+        await addDoc(collection(db, "transactions"), {
+          label: t.label,
+          amount: t.amount,
+          date: t.date,
+        });
+      }
+
+      setStatusMsg(`Successfully restored transactions for ${archive.monthYear}!`);
+      setErrorMsg("");
+    } catch (err) {
+      console.error("Error restoring month:", err);
+      setErrorMsg("Failed to restore the month.");
+      setStatusMsg("");
     }
   };
 
@@ -212,8 +325,8 @@ export default function App() {
     await updateDoc(doc(db, "budget", id), { paid: !currentPaid });
   };
 
-  const totalActual = items.reduce((sum, item) => sum + item.actual, 0);
-  const totalTransactions = transactions.reduce((sum, t) => sum + t.amount, 0);
+  const totalActual = items.reduce((sum, item) => sum + (Number(item.actual) || 0), 0);
+  const totalTransactions = transactions.reduce((sum, t) => sum + (Number(t.amount) || 0), 0);
   const remainingBudget = totalIncome - totalActual - totalTransactions;
 
   const scrollToForm = () => {
@@ -231,7 +344,6 @@ export default function App() {
           <h1 className="text-3xl font-black text-pink-600 italic tracking-wider mb-2">MY DRAGON</h1>
           <p className="text-gray-500 text-sm pb-8">Enter your 4-digit PIN to access budget</p>
           
-          {/* Pin Indicator Dots */}
           <div className="flex gap-4 mb-6">
             {Array.from({ length: 4 }).map((_, idx) => (
               <div
@@ -292,16 +404,44 @@ export default function App() {
       style={{ backgroundColor: "#E6007E" }}
     >
       <div className="max-w-2xl mx-auto">
-        <header className="mb-8 border-b border-pink-400 pb-6 flex justify-between items-start">
+        
+        {/* Inline Status and Error Messages */}
+        {statusMsg && (
+          <div className="mb-6 p-4 bg-green-600 border border-green-500 text-white font-semibold text-center rounded-xl shadow-md">
+            {statusMsg}
+            <button 
+              onClick={() => setStatusMsg("")}
+              className="float-right font-black hover:text-green-200"
+            >
+              ✕
+            </button>
+          </div>
+        )}
+        {errorMsg && (
+          <div className="mb-6 p-4 bg-orange-600 border border-orange-500 text-white font-semibold text-center rounded-xl shadow-md">
+            {errorMsg}
+            <button 
+              onClick={() => setErrorMsg("")}
+              className="float-right font-black hover:text-orange-200"
+            >
+              ✕
+            </button>
+          </div>
+        )}
+
+        <header className="mb-8 border-b border-pink-400 pb-6 flex justify-between items-start flex-wrap gap-4">
           <div>
             <p className="text-pink-100 text-sm mt-1 text-center">Monthly Budget Strategy</p>
           </div>
-          <button 
-            onClick={() => setIsUnlocked(false)}
-            className="text-xs bg-gray-800 text-white px-3 py-1.5 rounded-lg border border-gray-600 hover:bg-gray-900 font-semibold transition shadow-sm"
-          >
-            Lock App
-          </button>
+          
+          <div className="flex flex-col gap-2 items-end">
+            <button 
+              onClick={() => setIsUnlocked(false)}
+              className="text-xs bg-gray-800 text-white px-3 py-1.5 rounded-lg border border-gray-600 hover:bg-gray-900 font-semibold transition shadow-sm w-fit"
+            >
+              Lock App
+            </button>
+          </div>
         </header>
 
         {/* Tab Switcher */}
@@ -371,14 +511,14 @@ export default function App() {
               <input 
                 type="text" 
                 placeholder="e.g., Mortgage, Gas, Groceries"
-                className="flex-1 p-3 border border-pink-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-pink-400 bg-white"
+                className="flex-1 p-3 border border-pink-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-pink-400 bg-white text-gray-800"
                 value={newItemLabel}
                 onChange={(e) => setNewItemLabel(e.target.value)}
               />
               <input 
                 type="number" 
                 placeholder="Amount ($)"
-                className="p-3 border border-pink-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-pink-400 bg-white w-full sm:w-40"
+                className="p-3 border border-pink-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-pink-400 bg-white text-gray-800 w-full sm:w-40"
                 value={newItemAmount}
                 onChange={(e) => setNewItemAmount(Number(e.target.value))}
               />
@@ -415,7 +555,6 @@ export default function App() {
                         : 'bg-orange-500 border-orange-400'
                     }`}
                   >
-                    {/* Left side: Checkbox, Controls, Label */}
                     <div className="flex items-center gap-3 min-w-0 flex-1">
                       <input 
                         type="checkbox" 
@@ -424,8 +563,6 @@ export default function App() {
                         className="h-5 w-5 rounded border-gray-400 text-green-600 focus:ring-pink-500 cursor-pointer flex-shrink-0"
                         title="Mark as paid"
                       />
-
-                      {/* Up/Down controls */}
                       <div className="flex flex-col gap-0.5 select-none flex-shrink-0">
                         <button 
                           onClick={() => moveUp(index)} 
@@ -452,12 +589,10 @@ export default function App() {
                       </div>
                     </div>
 
-                    {/* Right side: Amount and Actions */}
                     <div className="flex items-center gap-3 shrink-0">
                       <span className={`font-black text-lg ${item.paid ? 'text-green-900' : 'text-white'}`}>
                         ${item.actual}
                       </span>
-                      
                       <button 
                         onClick={() => { 
                           setEditingBudgetId(item.id); 
@@ -525,6 +660,79 @@ export default function App() {
             </div>
           </div>
         </div>
+
+        {/* Monthly Archives Section */}
+        <div className="mt-12 border-t border-pink-400 pt-8 space-y-6">
+          <h2 className="text-2xl font-black text-white">Monthly Archives</h2>
+          
+          <div className="flex gap-2 items-center flex-wrap bg-white/10 p-4 rounded-xl border border-pink-400/30">
+            <input 
+              type="text"
+              placeholder="Archive name (e.g., 2026-05)"
+              className="text-xs p-2 rounded-lg border border-pink-300 text-gray-800 w-44 bg-white"
+              value={newArchiveName}
+              onChange={(e) => setNewArchiveName(e.target.value)}
+            />
+            <button
+              onClick={archiveCurrentMonth}
+              className="text-xs bg-green-600 text-white px-3 py-2 rounded-lg border border-green-500 hover:bg-green-700 font-semibold transition shadow-sm"
+            >
+              Archive Month
+            </button>
+          </div>
+
+          {archives.length === 0 ? (
+            <p className="text-orange-200 text-center py-6 bg-white/10 rounded-xl border border-pink-400">
+              No archived months found.
+            </p>
+          ) : (
+            archives.map((archive) => (
+              <div key={archive.id} className="bg-orange-500 border border-orange-400 rounded-2xl p-6 shadow-md text-white space-y-4">
+                <div className="flex justify-between items-center border-b border-orange-400 pb-3">
+                  <h3 className="text-xl font-black uppercase">Cycle: {archive.monthYear}</h3>
+                  <span className="text-xs bg-orange-600 px-2 py-1 rounded">
+                    Saved: {new Date(archive.archivedAt).toLocaleDateString()}
+                  </span>
+                </div>
+                <div className="grid grid-cols-2 gap-4 text-sm">
+                  <div>
+                    <p className="text-orange-200">Total Income</p>
+                    <p className="font-bold text-lg">${archive.totalIncome}</p>
+                  </div>
+                  <div>
+                    <p className="text-orange-200">Total Actual</p>
+                    <p className="font-bold text-lg">${archive.totalActual}</p>
+                  </div>
+                  <div>
+                    <p className="text-orange-200">Total Transactions</p>
+                    <p className="font-bold text-lg">${archive.totalTransactions}</p>
+                  </div>
+                  <div>
+                    <p className="text-orange-200">Remaining Budget</p>
+                    <p className={`font-bold text-lg ${archive.remainingBudget >= 0 ? 'text-green-300' : 'text-orange-300'}`}>
+                      ${archive.remainingBudget}
+                    </p>
+                  </div>
+                </div>
+                <div className="flex gap-2 justify-end pt-2 border-t border-orange-400/30">
+                  <button
+                    onClick={() => restoreMonth(archive)}
+                    className="text-xs bg-blue-600 text-white border border-blue-500 hover:bg-blue-700 px-3 py-1.5 rounded-lg font-semibold transition shadow-sm"
+                  >
+                    Restore Month
+                  </button>
+                  <button
+                    onClick={() => deleteArchive(archive.id)}
+                    className="text-xs bg-red-600 text-white border border-red-500 hover:bg-red-700 px-3 py-1.5 rounded-lg font-semibold transition shadow-sm"
+                  >
+                    Delete Archive
+                  </button>
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+
       </div>
     </div>
   );

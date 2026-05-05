@@ -102,10 +102,13 @@ export default function TransactionsTab({ items, totalIncome }: { items: BudgetI
     .filter((t) => selectedIds.has(t.id))
     .reduce((sum, t) => sum + (Number(t.amount) || 0), 0);
 
+  // Sorting: newest dates first, oldest dates last
   const displayedTransactions = [...transactions].sort((a, b) => {
     const timeA = new Date(a.date).getTime();
     const timeB = new Date(b.date).getTime();
-    if (!isNaN(timeA) && !isNaN(timeB) && timeA !== timeB) {
+    
+    // Sort by Date first
+    if (!isNaN(timeA) && !isNaN(timeB)) {
       return timeB - timeA;
     }
     return b.id.localeCompare(a.id);
