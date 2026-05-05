@@ -229,7 +229,7 @@ export default function App() {
       <div className="min-h-screen flex items-center justify-center p-4" style={{ backgroundColor: "#E6007E" }}>
         <div className="w-full max-w-sm bg-white p-8 rounded-2xl shadow-md border border-gray-100 flex flex-col items-center text-center">
           <h1 className="text-3xl font-black text-pink-600 italic tracking-wider mb-2">MY DRAGON</h1>
-          <p className="text-gray-500 text-sm mb-6">Enter your 4-digit PIN to access budget</p>
+          <p className="text-gray-500 text-sm pb-8">Enter your 4-digit PIN to access budget</p>
           
           {/* Pin Indicator Dots */}
           <div className="flex gap-4 mb-6">
