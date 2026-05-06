@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback, useMemo, FormEvent } from "react";
 import { 
   collection, 
   addDoc, 
@@ -31,22 +31,25 @@ export default function TransactionsTab({ items, totalIncome }: { items: BudgetI
   const [newAmount, setNewAmount] = useState<number | "">("");
   const [newDate, setNewDate] = useState("");
   const [editingTransactionId, setEditingTransactionId] = useState<string | null>(null);
-
-  // Selection state to keep track of selected transaction IDs
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     const unsubscribe = onSnapshot(collection(db, "transactions"), (snapshot) => {
-      const data = snapshot.docs.map((doc) => ({
-        id: doc.id,
-        ...doc.data(),
-      })) as TransactionItem[];
+      const data: TransactionItem[] = snapshot.docs.map((docSnap) => {
+        const d = docSnap.data();
+        return {
+          id: docSnap.id,
+          label: d.label as string,
+          amount: d.amount as number,
+          date: d.date as string,
+        };
+      });
       setTransactions(data);
     });
     return () => unsubscribe();
   }, []);
 
-  const addTransaction = async (e: React.FormEvent) => {
+  const addTransaction = useCallback(async (e: FormEvent) => {
     e.preventDefault();
     if (!newLabel.trim() || !newAmount) return;
 
@@ -69,19 +72,18 @@ export default function TransactionsTab({ items, totalIncome }: { items: BudgetI
     setNewLabel("");
     setNewAmount("");
     setNewDate("");
-  };
+  }, [newLabel, newAmount, newDate, editingTransactionId]);
 
-  const deleteItem = async (id: string) => {
+  const deleteItem = useCallback(async (id: string) => {
     await deleteDoc(doc(db, "transactions", id));
-  };
+  }, []);
 
-  const scrollToForm = () => {
+  const scrollToForm = useCallback(() => {
     const el = document.getElementById("transaction-form");
     if (el) el.scrollIntoView({ behavior: "smooth" });
-  };
+  }, []);
 
-  // Toggle selection on a transaction
-  const toggleSelection = (id: string) => {
+  const toggleSelection = useCallback((id: string) => {
     setSelectedIds((prev) => {
       const next = new Set(prev);
       if (next.has(id)) {
@@ -91,43 +93,42 @@ export default function TransactionsTab({ items, totalIncome }: { items: BudgetI
       }
       return next;
     });
-  };
+  }, []);
 
-  const totalTransactions = transactions.reduce((sum, t) => sum + (Number(t.amount) || 0), 0);
-  const totalActual = items.reduce((sum, item) => sum + (Number(item.actual) || 0), 0);
-  const finalRemaining = totalIncome - totalActual - totalTransactions;
+  const totalTransactions = useMemo(() => transactions.reduce((sum, t) => sum + (Number(t.amount) || 0), 0), [transactions]);
+  const totalActual = useMemo(() => items.reduce((sum, item) => sum + (Number(item.actual) || 0), 0), [items]);
+  const finalRemaining = useMemo(() => totalIncome - totalActual - totalTransactions, [totalIncome, totalActual, totalTransactions]);
+  const selectedTotal = useMemo(() => {
+    return transactions
+      .filter((t) => selectedIds.has(t.id))
+      .reduce((sum, t) => sum + (Number(t.amount) || 0), 0);
+  }, [transactions, selectedIds]);
 
-  // Calculate the tally for only the selected items
-  const selectedTotal = transactions
-    .filter((t) => selectedIds.has(t.id))
-    .reduce((sum, t) => sum + (Number(t.amount) || 0), 0);
-
-  // Sorting: newest dates first, oldest dates last
-  const displayedTransactions = [...transactions].sort((a, b) => {
-    const timeA = new Date(a.date).getTime();
-    const timeB = new Date(b.date).getTime();
-    
-    // Sort by Date first
-    if (!isNaN(timeA) && !isNaN(timeB)) {
-      return timeB - timeA;
-    }
-    return b.id.localeCompare(a.id);
-  });
+  const displayedTransactions = useMemo(() => {
+    return [...transactions].sort((a, b) => {
+      const timeA = new Date(a.date).getTime();
+      const timeB = new Date(b.date).getTime();
+      if (!isNaN(timeA) && !isNaN(timeB)) {
+        return timeB - timeA;
+      }
+      return b.id.localeCompare(a.id);
+    });
+  }, [transactions]);
 
   return (
     <div className="space-y-6 relative">
       {/* Floating Tally Dashboard */}
       {selectedIds.size > 0 && (
-        <div className="fixed top-4 right-4 z-50 bg-green-600 border border-green-500 rounded-2xl p-4 shadow-xl flex items-center gap-4 text-white">
+        <div className="fixed top-4 right-4 z-50 bg-lime-800 border border-lime-600 rounded-2xl p-4 shadow-xl flex items-center gap-4 text-white">
           <div>
-            <p className="text-[10px] font-black tracking-wider text-green-200 uppercase">Selected Tally</p>
+            <p className="text-[10px] font-black tracking-wider text-lime-200 uppercase">Selected Tally</p>
             <p className="text-2xl font-black mt-0.5">
               ${selectedTotal}
             </p>
           </div>
           <button 
             onClick={() => setSelectedIds(new Set())}
-            className="text-xs bg-white text-green-600 px-2.5 py-1.5 font-black rounded-lg uppercase tracking-wider hover:bg-gray-100 transition shadow-sm"
+            className="text-xs bg-white text-lime-800 px-2.5 py-1.5 font-black rounded-lg uppercase tracking-wider hover:bg-gray-100 transition shadow-sm"
           >
             Clear
           </button>
@@ -143,7 +144,7 @@ export default function TransactionsTab({ items, totalIncome }: { items: BudgetI
         </div>
         <div className="text-right">
           <p className="text-xs font-black tracking-wider text-orange-200 uppercase">Final Remaining</p>
-          <p className={`text-3xl sm:text-4xl font-black mt-1 ${finalRemaining >= 0 ? 'text-green-300' : 'text-orange-400'}`}>
+          <p className={`text-3xl sm:text-4xl font-black mt-1 ${finalRemaining >= 0 ? 'text-lime-200' : 'text-orange-400'}`}>
             ${finalRemaining}
           </p>
         </div>
@@ -217,23 +218,21 @@ export default function TransactionsTab({ items, totalIncome }: { items: BudgetI
                 onClick={() => toggleSelection(t.id)}
                 className={`border rounded-xl p-3 shadow-sm flex items-center justify-between gap-4 cursor-pointer transition-colors ${
                   isSelected 
-                    ? "bg-green-300 border-green-500 text-green-900" 
+                    ? "bg-lime-800 border-lime-600 text-lime-100" 
                     : "bg-orange-500 border-orange-400 text-white"
                 }`}
               >
-                {/* Description and Date */}
                 <div className="flex flex-col min-w-0">
-                  <h3 className={`font-black truncate ${isSelected ? "text-green-900" : "text-white"}`}>
+                  <h3 className={`font-black truncate ${isSelected ? "text-lime-100" : "text-white"}`}>
                     {t.label}
                   </h3>
-                  <p className={`text-[10px] font-bold uppercase ${isSelected ? "text-green-700/70" : "text-orange-200"}`}>
+                  <p className={`text-[10px] font-bold uppercase ${isSelected ? "text-lime-300" : "text-orange-200"}`}>
                     {t.date}
                   </p>
                 </div>
 
-                {/* Amount and Actions */}
                 <div className="flex items-center gap-3 shrink-0" onClick={(e) => e.stopPropagation()}>
-                  <span className={`font-black text-lg ${isSelected ? "text-green-900" : "text-white"}`}>
+                  <span className={`font-black text-lg ${isSelected ? "text-lime-200" : "text-white"}`}>
                     ${t.amount}
                   </span>
                   <button 
@@ -246,7 +245,7 @@ export default function TransactionsTab({ items, totalIncome }: { items: BudgetI
                     }}
                     className={`px-2 py-1 rounded text-[10px] font-black uppercase ${
                       isSelected 
-                        ? "bg-green-700/20 text-green-900 hover:bg-green-700/30" 
+                        ? "bg-lime-900/40 text-lime-100 hover:bg-lime-900/60" 
                         : "bg-white/90 text-orange-600 hover:bg-white"
                     }`}
                   >
@@ -254,7 +253,7 @@ export default function TransactionsTab({ items, totalIncome }: { items: BudgetI
                   </button>
                   <button 
                     onClick={() => deleteItem(t.id)}
-                    className={`hover:text-white/50 ${isSelected ? "text-green-900/60" : "text-white/80 hover:text-white"}`}
+                    className={`hover:text-white/50 ${isSelected ? "text-lime-300 hover:text-white" : "text-white/80 hover:text-white"}`}
                   >
                     ✕
                   </button>
