@@ -154,14 +154,14 @@ export default function TransactionsTab({ items, totalIncome }: Props) {
   // ─── Render ───────────────────────────────────────────────────────────────
 
   return (
-    <div className="space-y-6 relative">
+    <div className="space-y-6 relative max-w-full overflow-x-hidden p-1">
 
       {/* Floating tally for selected items */}
       {selectedIds.size > 0 && (
         <div
           role="status"
           aria-live="polite"
-          className="fixed top-4 right-4 z-50 bg-[#6B7C3A] border border-[#8a9e4a] rounded-2xl p-4 shadow-xl flex items-center gap-4 text-white"
+          className="fixed top-4 right-4 left-4 sm:left-auto z-50 bg-[#6B7C3A] border border-[#8a9e4a] rounded-2xl p-4 shadow-xl flex items-center justify-between sm:justify-start gap-4 text-white"
         >
           <div>
             <p className="text-[10px] font-black tracking-wider text-[#c8db7a] uppercase">
@@ -180,21 +180,21 @@ export default function TransactionsTab({ items, totalIncome }: Props) {
       )}
 
       {/* Summary banner */}
-      <div className="bg-orange-500 border border-orange-400 rounded-2xl p-6 shadow-md flex justify-between items-center px-8">
-        <div>
-          <p className="text-xs font-black tracking-wider text-orange-200 uppercase">
+      <div className="bg-orange-500 border border-orange-400 rounded-2xl p-6 shadow-md flex justify-between items-center px-4 sm:px-8">
+        <div className="min-w-0">
+          <p className="text-[10px] sm:text-xs font-black tracking-wider text-orange-200 uppercase">
             Total Transactions
           </p>
-          <p className="text-3xl sm:text-4xl font-black text-white mt-1">
+          <p className="text-2xl sm:text-4xl font-black text-white mt-1">
             ${totalTransactions}
           </p>
         </div>
-        <div className="text-right">
-          <p className="text-xs font-black tracking-wider text-orange-200 uppercase">
+        <div className="text-right min-w-0">
+          <p className="text-[10px] sm:text-xs font-black tracking-wider text-orange-200 uppercase">
             Final Remaining
           </p>
           <p
-            className={`text-3xl sm:text-4xl font-black mt-1 ${
+            className={`text-2xl sm:text-4xl font-black mt-1 ${
               finalRemaining >= 0 ? "text-[#c8db7a]" : "text-orange-300"
             }`}
           >
@@ -222,7 +222,7 @@ export default function TransactionsTab({ items, totalIncome }: Props) {
           <input
             type="number"
             placeholder="Amount ($)"
-            className="flex-1 p-4 border border-pink-300 rounded-xl shadow-sm bg-white text-gray-800 text-lg focus:outline-none focus:ring-2 focus:ring-pink-400"
+            className="flex-1 min-w-0 p-4 border border-pink-300 rounded-xl shadow-sm bg-white text-gray-800 text-lg focus:outline-none focus:ring-2 focus:ring-pink-400"
             value={newAmount}
             onChange={(e) => setNewAmount(Number(e.target.value) || "")}
             aria-label="Transaction amount"
@@ -313,15 +313,15 @@ function TransactionRow({
       onKeyDown={(e) => e.key === "Enter" && onToggle()}
       aria-pressed={selected}
       aria-label={`${t.label}, $${t.amount}. ${selected ? "Selected" : "Not selected"}`}
-      className={`border rounded-xl p-3 shadow-sm flex items-center justify-between gap-4 cursor-pointer transition-colors ${
+      className={`border rounded-xl p-3 shadow-sm flex items-center justify-between gap-2 cursor-pointer transition-colors w-full overflow-hidden ${
         selected
           ? "bg-[#6B7C3A] border-[#8a9e4a] text-white"
           : "bg-orange-500 border-orange-400 text-white"
       }`}
     >
       {/* Label + date */}
-      <div className="flex flex-col min-w-0">
-        <h3 className="font-black truncate">{t.label}</h3>
+      <div className="flex flex-col min-w-0 flex-1">
+        <h3 className="font-black truncate block">{t.label}</h3>
         <p className={`text-[10px] font-bold uppercase ${selected ? "text-[#c8db7a]" : "text-orange-200"}`}>
           {t.date}
         </p>
